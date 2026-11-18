@@ -32,7 +32,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $$
+as $function$
   select exists (
     select 1
     from public.direct_conversations c
@@ -44,7 +44,7 @@ as $$
            or (b.blocker_id = case when c.user_one = auth.uid() then c.user_two else c.user_one end and b.blocked_id = auth.uid())
       )
   );
-$$;
+$function$;
 revoke all on function public.can_access_direct_conversation(uuid) from public;
 grant execute on function public.can_access_direct_conversation(uuid) to authenticated;
 
@@ -83,7 +83,7 @@ returns uuid
 language plpgsql
 security definer
 set search_path = ''
-as $$
+as $function$
 declare
   v_me uuid := auth.uid();
   v_low uuid;
@@ -113,7 +113,7 @@ begin
   returning id into v_id;
   return v_id;
 end;
-$$;
+$function$;
 revoke all on function public.get_or_create_direct_conversation(uuid) from public;
 grant execute on function public.get_or_create_direct_conversation(uuid) to authenticated;
 
@@ -122,24 +122,24 @@ returns trigger
 language plpgsql
 security definer
 set search_path = ''
-as $$
+as $function$
 begin
   update public.direct_conversations
   set updated_at = new.created_at
   where id = new.conversation_id;
   return new;
 end;
-$$;
+$function$;
 drop trigger if exists direct_message_touch_conversation on public.direct_messages;
 create trigger direct_message_touch_conversation
 after insert on public.direct_messages
 for each row execute function public.touch_direct_conversation();
 
 -- Realtime включается для новых сообщений, если таблица ещё не добавлена в publication.
-do $$
+do $function$
 begin
   alter publication supabase_realtime add table public.direct_messages;
 exception when duplicate_object then null;
 when undefined_object then null;
 end;
-$$;
+$function$;

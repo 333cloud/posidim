@@ -25,7 +25,7 @@ if(city){try{const q=await fetch('https://nominatim.openstreetmap.org/search?for
 setTimeout(()=>map.invalidateSize(true),250);
 window.addEventListener('resize',()=>map.invalidateSize(true));
 })();</script></body></html>`;
- if (Platform.OS === "web") return createElement("iframe" as any, { srcDoc: html, title: "Карта ПОСИДИМ", style: { width: "100%", height: "100%", border: 0, display: "block" }, loading: "lazy" } as any);
+ if (Platform.OS === "web") return createElement("iframe" as any, { key: city + "-" + radius, srcDoc: html, title: "Карта ПОСИДИМ", style: { width: "100%", height: "100%", border: 0, display: "block" }, loading: "lazy" } as any);
  return <WebView originWhitelist={["*"]} source={{ html }} javaScriptEnabled domStorageEnabled style={{ flex: 1, backgroundColor: "#e8e6df" }} />;
 }
 

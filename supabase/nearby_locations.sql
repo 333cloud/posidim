@@ -128,7 +128,7 @@ begin
     p.mood_expires_at,
     (ul.latitude + (sin(random() * 6.283185307179586) * (0.004 + random() * 0.004)))::double precision,
     (ul.longitude + (cos(random() * 6.283185307179586) * (0.004 + random() * 0.004)) / greatest(abs(cos(radians(ul.latitude))), 0.2))::double precision,
-    (
+    (round((
       6371 * 2 * asin(
         least(1, sqrt(
           power(sin(radians(ul.latitude - v_lat) / 2), 2) +
@@ -136,7 +136,7 @@ begin
           power(sin(radians(ul.longitude - v_lon) / 2), 2)
         ))
       )
-    )::double precision
+    )::numeric * 2) / 2)::double precision
   from public.user_locations ul
   join public.profiles p on p.id = ul.user_id
   where ul.user_id <> auth.uid()

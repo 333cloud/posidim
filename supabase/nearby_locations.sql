@@ -126,8 +126,8 @@ begin
     p.city,
     p.mood_status,
     p.mood_expires_at,
-    (ul.latitude + (sin(random() * 6.283185307179586) * (0.004 + random() * 0.004)))::double precision,
-    (ul.longitude + (cos(random() * 6.283185307179586) * (0.004 + random() * 0.004)) / greatest(abs(cos(radians(ul.latitude))), 0.2))::double precision,
+    (ul.latitude + sin(jitter.angle) * jitter.offset_km / 111.32)::double precision,
+    (ul.longitude + cos(jitter.angle) * jitter.offset_km / (111.32 * greatest(abs(cos(radians(ul.latitude))), 0.2)))::double precision,
     (round((
       6371 * 2 * asin(
         least(1, sqrt(
@@ -139,6 +139,11 @@ begin
     )::numeric * 2) / 2)::double precision
   from public.user_locations ul
   join public.profiles p on p.id = ul.user_id
+  cross join lateral (
+    select
+      pg_catalog.mod(pg_catalog.abs(pg_catalog.hashtextextended(auth.uid()::text || ':' || p.id::text || ':angle', 0))::numeric, 628319)::double precision / 100000.0 as angle,
+      0.3 + pg_catalog.mod(pg_catalog.abs(pg_catalog.hashtextextended(auth.uid()::text || ':' || p.id::text || ':distance', 0))::numeric, 700000)::double precision / 1000000.0 as offset_km
+  ) jitter
   where ul.user_id <> auth.uid()
     and p.is_discoverable = true
     and (p.mood_expires_at is null or p.mood_expires_at > now())

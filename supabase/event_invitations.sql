@@ -119,12 +119,6 @@ using (
     select 1 from public.events e
     where e.id = event_id and e.host_id = auth.uid()
   )
-  or exists (
-    select 1 from public.event_members mine
-    where mine.event_id = event_members.event_id
-      and mine.user_id = auth.uid()
-      and mine.status = 'accepted'
-  )
 );
 
 create index if not exists event_invitations_inbox_idx

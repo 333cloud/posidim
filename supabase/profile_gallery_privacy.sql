@@ -68,12 +68,12 @@ for delete to authenticated using (
 );
 create index if not exists profile_photos_user_order_idx on public.profile_photos(user_id, sort_order, created_at);
 
-create unique index if not exists profile_photos_user_sort_unique on public.profile_photos(user_id, sort_order);
+drop index if exists public.profile_photos_user_sort_unique;
 create or replace function public.enforce_profile_photo_limit()
 returns trigger language plpgsql security definer set search_path = '' as $
 declare photo_count integer;
 begin
-  perform pg_advisory_xact_lock(hashtextextended(new.user_id::text, 0));
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(new.user_id::text, 0));
   select count(*) into photo_count from public.profile_photos where user_id = new.user_id;
   if photo_count >= 5 then raise exception 'Можно добавить не больше пяти фотографий'; end if;
   return new;

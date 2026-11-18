@@ -32,7 +32,7 @@ language sql
 stable
 security definer
 set search_path = ''
-as $
+as $$
   select exists (
     select 1
     from public.direct_conversations c
@@ -44,7 +44,7 @@ as $
            or (b.blocker_id = case when c.user_one = auth.uid() then c.user_two else c.user_one end and b.blocked_id = auth.uid())
       )
   );
-$;
+$$;
 revoke all on function public.can_access_direct_conversation(uuid) from public;
 grant execute on function public.can_access_direct_conversation(uuid) to authenticated;
 

@@ -97,7 +97,7 @@ create index if not exists profile_photos_user_order_idx on public.profile_photo
 
 drop index if exists public.profile_photos_user_sort_unique;
 create or replace function public.enforce_profile_photo_limit()
-returns trigger language plpgsql security definer set search_path = '' as $
+returns trigger language plpgsql security definer set search_path = '' as $$
 declare photo_count integer;
 begin
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(new.user_id::text, 0));
@@ -105,7 +105,7 @@ begin
   if photo_count >= 5 then raise exception 'Можно добавить не больше пяти фотографий'; end if;
   return new;
 end;
-$;
+$$;
 drop trigger if exists profile_photos_limit on public.profile_photos;
 create trigger profile_photos_limit before insert on public.profile_photos
 for each row execute function public.enforce_profile_photo_limit();

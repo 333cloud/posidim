@@ -25,3 +25,5 @@ create index if not exists profile_reactions_actor_idx
   on public.profile_reactions(actor_id, liked, created_at desc);
 create index if not exists events_city_status_starts_idx
   on public.events(city, status, starts_at);
+
+grant select, insert on public.profile_reactions to authenticated;

@@ -7,4 +7,4 @@ exception
   when undefined_object then
     raise notice 'Публикация supabase_realtime не найдена; включи Realtime в настройках Supabase.';
 end;
-$;
+$$;

@@ -7,9 +7,11 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
   const url = Deno.env.get("SUPABASE_URL");
   const secretKeys = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}");
-  const serviceKey = secretKeys.default ?? Deno.env.get("POSIDIM_SERVICE_ROLE_KEY") ?? Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  // Prefer the legacy JWT service-role key for supabase-js v2 compatibility.
+  // New sb_secret_* keys are not JWTs and must not be sent as Bearer tokens.
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? secretKeys.default ?? Deno.env.get("POSIDIM_SERVICE_ROLE_KEY");
   const publishableKeys = JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "{}");
-  const publishableKey = publishableKeys.default ?? publishableKey;
+  const publishableKey = Deno.env.get("SUPABASE_ANON_KEY") ?? publishableKeys.default ?? "";
   const authHeader = req.headers.get("Authorization");
   if (!url || !serviceKey || !authHeader) return Response.json({ error: "Server is not configured" }, { status: 500 });
 

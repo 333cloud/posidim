@@ -63,20 +63,13 @@ create policy "direct_messages_send_member" on public.direct_messages
 for insert to authenticated
 with check (
   sender_id = (select auth.uid())
+  and public.can_access_direct_conversation(conversation_id)
   and exists (
     select 1 from public.direct_conversations c
+    join public.profile_matches m
+      on m.user_low = least(c.user_one,c.user_two)
+     and m.user_high = greatest(c.user_one,c.user_two)
     where c.id = conversation_id
-      and ((c.user_one = (select auth.uid())) or (c.user_two = (select auth.uid())))
-      and exists (
-        select 1 from public.profile_matches m
-        where m.user_low = least(c.user_one,c.user_two)
-          and m.user_high = greatest(c.user_one,c.user_two)
-      )
-      and not exists (
-        select 1 from public.user_blocks b
-        where (b.blocker_id = (select auth.uid()) and b.blocked_id = case when c.user_one = (select auth.uid()) then c.user_two else c.user_one end)
-           or (b.blocker_id = case when c.user_one = (select auth.uid()) then c.user_two else c.user_one end and b.blocked_id = (select auth.uid()))
-      )
   )
 );
 

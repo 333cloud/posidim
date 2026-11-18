@@ -12,7 +12,7 @@ returns boolean language sql stable security definer set search_path = ''
 as $function$
   select case coalesce((select pref.allowed_from from public.user_message_preferences pref where pref.user_id=p_recipient_id),'matches')
     when 'all' then true
-    when 'liked' then exists (select 1 from public.profile_reactions r where r.actor_id=p_sender_id and r.target_id=p_recipient_id and r.liked=true)
+    when 'liked' then exists (select 1 from public.profile_reactions r where r.actor_id=p_recipient_id and r.target_id=p_sender_id and r.liked=true)
     else exists (select 1 from public.profile_matches m where m.user_low=least(p_sender_id,p_recipient_id) and m.user_high=greatest(p_sender_id,p_recipient_id))
   end
   and p_sender_id is not null and p_recipient_id is not null and p_sender_id<>p_recipient_id
@@ -49,10 +49,23 @@ as $function$
 declare v_me uuid:=auth.uid(); v_low uuid; v_high uuid; v_id uuid;
 begin
  if v_me is null then raise exception 'Необходимо войти в аккаунт'; end if;
+ if p_other_user_id is null or p_other_user_id=v_me then
+   raise exception 'Нельзя открыть чат с этим пользователем';
+ end if;
+ v_low:=least(v_me,p_other_user_id); v_high:=greatest(v_me,p_other_user_id);
+
+ -- Уже начатый диалог можно продолжать, даже если владелец профиля позже изменил настройку.
+ select c.id into v_id
+ from public.direct_conversations c
+ where c.user_one=v_low and c.user_two=v_high
+   and exists (select 1 from public.direct_messages dm where dm.conversation_id=c.id)
+ limit 1;
+ if v_id is not null then return v_id; end if;
+
  if not public.can_receive_direct_message(v_me,p_other_user_id) then
    raise exception 'Пользователь ограничил круг тех, кто может начинать личный чат';
  end if;
- v_low:=least(v_me,p_other_user_id); v_high:=greatest(v_me,p_other_user_id);
+
  insert into public.direct_conversations(user_one,user_two) values(v_low,v_high)
  on conflict(user_one,user_two) do update set updated_at=public.direct_conversations.updated_at
  returning id into v_id;
@@ -67,6 +80,11 @@ create policy "direct_messages_send_member" on public.direct_messages
 for insert to authenticated with check (
  sender_id=(select auth.uid())
  and public.can_access_direct_conversation(conversation_id)
- and exists (select 1 from public.direct_conversations c where c.id=conversation_id
-  and public.can_receive_direct_message(auth.uid(),case when c.user_one=auth.uid() then c.user_two else c.user_one end))
+ and (
+   -- После первого сообщения обе стороны могут нормально продолжать существующий диалог.
+   exists (select 1 from public.direct_messages previous
+     where previous.conversation_id=direct_messages.conversation_id)
+   or exists (select 1 from public.direct_conversations c where c.id=conversation_id
+     and public.can_receive_direct_message(auth.uid(),case when c.user_one=auth.uid() then c.user_two else c.user_one end))
+ )
 );

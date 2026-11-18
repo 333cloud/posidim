@@ -105,7 +105,7 @@ export default function HomeScreen() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
           <View style={styles.topLine}>
             <View>
-              <Text style={styles.logo}>ПОСИДИМ<span> </span><Text style={styles.logoDot}>.</Text></Text>
+              <Text style={styles.logo}>ПОСИДИМ<Text style={styles.logoDot}>.</Text></Text>
               <Text style={styles.tagline}>Люди рядом. Встречи по душе.</Text>
             </View>
             <View style={styles.avatar}><Text style={styles.avatarText}>Я</Text></View>

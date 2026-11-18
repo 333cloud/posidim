@@ -169,3 +169,27 @@ revoke all on function public.find_nearby_profiles(integer) from public, anon;
 grant execute on function public.set_my_location(double precision, double precision) to authenticated;
 grant execute on function public.delete_my_location() to authenticated;
 grant execute on function public.find_nearby_profiles(integer) to authenticated;
+
+-- Если пользователь скрывает профиль напрямую через базу или другое устройство,
+-- автоматически удаляем сохранённую геопозицию.
+create or replace function public.cleanup_hidden_user_location()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+begin
+  if new.is_discoverable is distinct from true then
+    delete from public.user_locations where user_id = new.id;
+  end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists cleanup_hidden_user_location_trigger on public.profiles;
+create trigger cleanup_hidden_user_location_trigger
+after update of is_discoverable on public.profiles
+for each row
+execute function public.cleanup_hidden_user_location();
+
+revoke all on function public.cleanup_hidden_user_location() from public, anon, authenticated;

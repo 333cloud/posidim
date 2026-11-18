@@ -351,7 +351,7 @@ export default function HomeScreen() {
  const resetPasswordEmail=async()=>{
   setAuthMessage("");
   const address=email.trim();
-  if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(address)){
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address)){
    setAuthMessage("Введи корректный адрес электронной почты.");
    return;
   }
@@ -377,7 +377,8 @@ export default function HomeScreen() {
     const numericAge=Number(authAge);
     if(!authName.trim()||!authCity.trim()){setAuthMessage("Укажи имя и город.");setAuthBusy(false);return;}
     if(!Number.isInteger(numericAge)||numericAge<18||numericAge>120){setAuthMessage("Регистрация доступна только с 18 лет. Проверь возраст.");setAuthBusy(false);return;}
-    const {data,error}=await supabase.auth.signUp({email:email.trim(),password,options:{data:{display_name:authName.trim(),age:numericAge,city:authCity.trim()}}});
+    const emailRedirectTo=Platform.OS==="web"?(typeof window!=="undefined"?new URL("/auth/confirm",window.location.origin).toString():undefined):"posidim://auth/confirm";
+    const {data,error}=await supabase.auth.signUp({email:email.trim(),password,options:{emailRedirectTo,data:{display_name:authName.trim(),age:numericAge,city:authCity.trim()}}});
     if(error) throw error;
     setName(authName.trim());setAge(String(numericAge));
     if(!data.session){setAuthMessage("Аккаунт создан. Проверь почту и подтверди адрес, затем войди.");setAuthMode("login");}

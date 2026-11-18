@@ -28,7 +28,14 @@ alter table public.direct_messages enable row level security;
 drop policy if exists "direct_conversations_read_member" on public.direct_conversations;
 create policy "direct_conversations_read_member" on public.direct_conversations
 for select to authenticated
-using ((select auth.uid()) = user_one or (select auth.uid()) = user_two);
+using (
+  ((select auth.uid()) = user_one or (select auth.uid()) = user_two)
+  and not exists (
+    select 1 from public.user_blocks b
+    where (b.blocker_id = (select auth.uid()) and b.blocked_id = case when user_one = (select auth.uid()) then user_two else user_one end)
+       or (b.blocker_id = case when user_one = (select auth.uid()) then user_two else user_one end and b.blocked_id = (select auth.uid()))
+  )
+);
 
 drop policy if exists "direct_messages_read_member" on public.direct_messages;
 create policy "direct_messages_read_member" on public.direct_messages
@@ -115,6 +122,7 @@ grant execute on function public.get_or_create_direct_conversation(uuid) to auth
 create or replace function public.touch_direct_conversation()
 returns trigger
 language plpgsql
+security definer
 set search_path = ''
 as $$
 begin

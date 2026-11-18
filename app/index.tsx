@@ -38,7 +38,33 @@ export default function HomeScreen() {
  const [bio,setBio] = useState("Открыт новым знакомствам");
  const [saved,setSaved] = useState(false);
  const [liked,setLiked] = useState<string[]>([]);
- useEffect(()=>{\n  supabase.auth.getSession().then(({data})=>{setSession(data.session);setAuthLoading(false);}).catch(()=>setAuthLoading(false));\n  const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,nextSession)=>{setSession(nextSession);});\n  return ()=>subscription.unsubscribe();\n },[]);\n const handleAuth = async () => {\n  setAuthMessage("");\n  if(!email.trim()||!password){setAuthMessage("Введи email и пароль.");return;}\n  if(password.length<6){setAuthMessage("Пароль должен содержать минимум 6 символов.");return;}\n  setAuthBusy(true);\n  try {\n   if(authMode==="signup"){\n    const numericAge=Number(authAge);\n    if(!authName.trim()||!authCity.trim()){setAuthMessage("Укажи имя и город.");setAuthBusy(false);return;}\n    if(!Number.isInteger(numericAge)||numericAge<18||numericAge>120){setAuthMessage("Регистрация доступна только с 18 лет. Проверь возраст.");setAuthBusy(false);return;}\n    const {data,error}=await supabase.auth.signUp({email:email.trim(),password,options:{data:{display_name:authName.trim(),age:numericAge,city:authCity.trim()}}});\n    if(error) throw error;\n    setName(authName.trim());setAge(String(numericAge));\n    if(!data.session){setAuthMessage("Аккаунт создан. Проверь почту и подтверди адрес, затем войди.");setAuthMode("login");}\n   } else {\n    const {error}=await supabase.auth.signInWithPassword({email:email.trim(),password});\n    if(error) throw error;\n   }\n  } catch(error:any) {setAuthMessage(error?.message||"Не удалось выполнить вход. Попробуй ещё раз.");}\n  finally {setAuthBusy(false);}\n };\n const visible = useMemo(()=>events.filter(e=>(filter==="Все"||e.category===filter)&&[e.title,e.place,e.description].some(v=>v.toLowerCase().includes(search.trim().toLowerCase()))),[events,filter,search]);
+ useEffect(()=>{
+  supabase.auth.getSession().then(({data})=>{setSession(data.session);setAuthLoading(false);}).catch(()=>setAuthLoading(false));
+  const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,nextSession)=>{setSession(nextSession);});
+  return ()=>subscription.unsubscribe();
+ },[]);
+ const handleAuth = async () => {
+  setAuthMessage("");
+  if(!email.trim()||!password){setAuthMessage("Введи email и пароль.");return;}
+  if(password.length<6){setAuthMessage("Пароль должен содержать минимум 6 символов.");return;}
+  setAuthBusy(true);
+  try {
+   if(authMode==="signup"){
+    const numericAge=Number(authAge);
+    if(!authName.trim()||!authCity.trim()){setAuthMessage("Укажи имя и город.");setAuthBusy(false);return;}
+    if(!Number.isInteger(numericAge)||numericAge<18||numericAge>120){setAuthMessage("Регистрация доступна только с 18 лет. Проверь возраст.");setAuthBusy(false);return;}
+    const {data,error}=await supabase.auth.signUp({email:email.trim(),password,options:{data:{display_name:authName.trim(),age:numericAge,city:authCity.trim()}}});
+    if(error) throw error;
+    setName(authName.trim());setAge(String(numericAge));
+    if(!data.session){setAuthMessage("Аккаунт создан. Проверь почту и подтверди адрес, затем войди.");setAuthMode("login");}
+   } else {
+    const {error}=await supabase.auth.signInWithPassword({email:email.trim(),password});
+    if(error) throw error;
+   }
+  } catch(error:any) {setAuthMessage(error?.message||"Не удалось выполнить вход. Попробуй ещё раз.");}
+  finally {setAuthBusy(false);}
+ };
+ const visible = useMemo(()=>events.filter(e=>(filter==="Все"||e.category===filter)&&[e.title,e.place,e.description].some(v=>v.toLowerCase().includes(search.trim().toLowerCase()))),[events,filter,search]);
  const create = () => {
   if(!title.trim()||!place.trim()){Alert.alert("Заполни обязательные поля","Нужно указать название и место встречи.");return;}
   const item:EventItem={id:Date.now(),title:title.trim(),category,place:place.trim(),time:"Время уточняется",people:1,capacity:6,host:name||"Ты",initials:(name||"Я").slice(0,1).toUpperCase(),accent:"#A78BFA",description:description.trim()||"Новая встреча в ПОСИДИМ. Присоединяйся!"};

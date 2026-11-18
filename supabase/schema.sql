@@ -68,11 +68,97 @@ security definer
 set search_path = ''
 as $$
 begin
+  if coalesce(new.raw_user_meta_data ->> 'age', '') !~ '^[0-9]{1,3}
+end;
+$$;
+
+drop trigger if exists on_auth_user_created_posidim on auth.users;
+create trigger on_auth_user_created_posidim
+after insert on auth.users
+for each row execute procedure public.create_profile_for_new_user();
+
+alter table public.profiles enable row level security;
+alter table public.events enable row level security;
+alter table public.event_members enable row level security;
+alter table public.messages enable row level security;
+alter table public.user_blocks enable row level security;
+alter table public.reports enable row level security;
+
+-- Профили видны вошедшим пользователям; редактировать можно только свой.
+create policy "profiles_read_authenticated" on public.profiles
+for select to authenticated using (true);
+create policy "profiles_insert_own" on public.profiles
+for insert to authenticated with check (auth.uid() = id);
+create policy "profiles_update_own" on public.profiles
+for update to authenticated using (auth.uid() = id) with check (auth.uid() = id);
+
+create policy "events_read_authenticated" on public.events
+for select to authenticated using (status = 'open' or host_id = auth.uid());
+create policy "events_create_own" on public.events
+for insert to authenticated with check (host_id = auth.uid());
+create policy "events_update_host" on public.events
+for update to authenticated using (host_id = auth.uid()) with check (host_id = auth.uid());
+create policy "events_delete_host" on public.events
+for delete to authenticated using (host_id = auth.uid());
+
+create policy "members_read_related" on public.event_members
+for select to authenticated using (
+  user_id = auth.uid() or exists (
+    select 1 from public.events e where e.id = event_id and e.host_id = auth.uid()
+  )
+);
+create policy "members_request_self" on public.event_members
+for insert to authenticated with check (user_id = auth.uid());
+create policy "members_update_self_or_host" on public.event_members
+for update to authenticated using (
+  user_id = auth.uid() or exists (
+    select 1 from public.events e where e.id = event_id and e.host_id = auth.uid()
+  )
+) with check (
+  user_id = auth.uid() or exists (
+    select 1 from public.events e where e.id = event_id and e.host_id = auth.uid()
+  )
+);
+
+create policy "messages_read_event_members" on public.messages
+for select to authenticated using (
+  exists (select 1 from public.event_members m where m.event_id = event_id and m.user_id = auth.uid() and m.status = 'accepted')
+  or exists (select 1 from public.events e where e.id = event_id and e.host_id = auth.uid())
+);
+create policy "messages_send_as_member" on public.messages
+for insert to authenticated with check (
+  sender_id = auth.uid() and (
+    exists (select 1 from public.event_members m where m.event_id = event_id and m.user_id = auth.uid() and m.status = 'accepted')
+    or exists (select 1 from public.events e where e.id = event_id and e.host_id = auth.uid())
+  )
+);
+
+create policy "blocks_read_own" on public.user_blocks
+for select to authenticated using (blocker_id = auth.uid());
+create policy "blocks_create_own" on public.user_blocks
+for insert to authenticated with check (blocker_id = auth.uid());
+create policy "blocks_delete_own" on public.user_blocks
+for delete to authenticated using (blocker_id = auth.uid());
+
+create policy "reports_create_own" on public.reports
+for insert to authenticated with check (reporter_id = auth.uid());
+create policy "reports_read_own" on public.reports
+for select to authenticated using (reporter_id = auth.uid());
+
+create index if not exists events_city_starts_at_idx on public.events(city, starts_at);
+create index if not exists event_members_user_idx on public.event_members(user_id);
+create index if not exists messages_event_created_idx on public.messages(event_id, created_at);
+
+     or (new.raw_user_meta_data ->> 'age')::integer < 18
+     or (new.raw_user_meta_data ->> 'age')::integer > 120 then
+    raise exception 'Регистрация доступна только пользователям от 18 лет';
+  end if;
+
   insert into public.profiles (id, display_name, age, city)
   values (
     new.id,
     coalesce(nullif(new.raw_user_meta_data ->> 'display_name',''), 'Новый пользователь'),
-    coalesce((new.raw_user_meta_data ->> 'age')::integer, 18),
+    (new.raw_user_meta_data ->> 'age')::integer,
     coalesce(new.raw_user_meta_data ->> 'city','')
   );
   return new;

@@ -58,6 +58,7 @@ export default function HomeScreen() {
  const [authAge,setAuthAge] = useState("18");
  const [authCity,setAuthCity] = useState("");
  const [authBusy,setAuthBusy] = useState(false);
+ const [resetBusy,setResetBusy] = useState(false);
  const [authMessage,setAuthMessage] = useState("");
  const [avatarUrl,setAvatarUrl] = useState<string|null>(null);
  const [avatarBusy,setAvatarBusy] = useState(false);
@@ -347,6 +348,25 @@ export default function HomeScreen() {
  const enableLocationSharing=async()=>{if(!session?.user?.id||locationBusy)return;if(!mapVisible){Alert.alert("Сначала включи видимость","Нажми ВКЛ в блоке «Твоя видимость», чтобы разрешить показ приблизительного положения.");return;}setLocationBusy(true);try{const permission=await Location.requestForegroundPermissionsAsync();if(permission.status!=="granted"){Alert.alert("Геолокация не разрешена","Можно продолжать пользоваться поиском по городу. Точное местоположение не будет сохранено.");return;}const position=await Location.getCurrentPositionAsync({accuracy:Location.Accuracy.Balanced});const {error}=await supabase.rpc("set_my_location",{p_latitude:position.coords.latitude,p_longitude:position.coords.longitude});if(error)throw error;setLocationSharing(true);setOwnLocation({latitude:position.coords.latitude,longitude:position.coords.longitude});Alert.alert("Поиск рядом включён","Другие пользователи увидят только приблизительную область, не твои точные координаты.");}catch(e:any){Alert.alert("Не удалось включить поиск рядом",e?.message||"Попробуй ещё раз.");}finally{setLocationBusy(false);}};
  const disableLocationSharing=async()=>{setLocationBusy(true);try{const {error}=await supabase.rpc("delete_my_location");if(error)throw error;setLocationSharing(false);setOwnLocation(null);Alert.alert("Геопоиск выключен","Твои координаты удалены. Можно продолжить поиск по городу.");}catch(e:any){Alert.alert("Не удалось выключить геопоиск",e?.message||"Попробуй ещё раз.");}finally{setLocationBusy(false);}};
  const pickAvatar=async()=>{if(!session?.user?.id)return;setAvatarBusy(true);try{const result=await ImagePicker.launchImageLibraryAsync({mediaTypes:["images"],allowsEditing:true,aspect:[1,1],quality:0.82});if(result.canceled||!result.assets?.[0])return;const asset=result.assets[0];if(asset.fileSize&&asset.fileSize>5*1024*1024){Alert.alert("Слишком большой файл","Выбери изображение до 5 МБ.");return;}const mime=asset.mimeType||"image/jpeg";if(!["image/jpeg","image/png","image/webp"].includes(mime)){Alert.alert("Формат не поддерживается","Выбери JPG, PNG или WebP.");return;}const ext=mime==="image/png"?"png":mime==="image/webp"?"webp":"jpg";const body=asset.file??await(await fetch(asset.uri)).arrayBuffer();const path=session.user.id+"/avatar."+ext;const {error:uploadError}=await supabase.storage.from("avatars").upload(path,body,{contentType:mime,upsert:true});if(uploadError)throw uploadError;const url=supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl+"?v="+Date.now();const {error}=await supabase.from("profiles").update({avatar_url:url}).eq("id",session.user.id);if(error)throw error;setAvatarUrl(url);Alert.alert("Готово","Аватарка сохранена в профиле.");}catch(error:any){Alert.alert("Не удалось загрузить фото",error?.message||"Попробуй ещё раз.");}finally{setAvatarBusy(false);}};
+ const resetPasswordEmail=async()=>{
+  setAuthMessage("");
+  const address=email.trim();
+  if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(address)){
+   setAuthMessage("Введи корректный адрес электронной почты.");
+   return;
+  }
+  setResetBusy(true);
+  try{
+   const redirectTo=Platform.OS==="web"
+    ?(typeof window!=="undefined"?new URL("/auth/callback",window.location.origin).toString():undefined)
+    :"posidim://auth/callback";
+   const {error}=await supabase.auth.resetPasswordForEmail(address,redirectTo?{redirectTo}:undefined);
+   if(error)throw error;
+   setAuthMessage("Если аккаунт с таким адресом существует, письмо для восстановления уже отправлено. Открой ссылку из письма на этом устройстве.");
+  }catch(error:any){
+   setAuthMessage(error?.message||"Не удалось отправить письмо. Проверь адрес и попробуй ещё раз.");
+  }finally{setResetBusy(false);}
+ };
  const handleAuth = async () => {
   setAuthMessage("");
   if(!email.trim()||!password){setAuthMessage("Введи email и пароль.");return;}
@@ -518,6 +538,7 @@ export default function HomeScreen() {
  <Text style={s.label}>Электронная почта</Text><TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" style={s.input} placeholder="name@example.com" placeholderTextColor="#777D8C"/><Text style={s.label}>Пароль</Text><TextInput value={password} onChangeText={setPassword} secureTextEntry style={s.input} placeholder="Минимум 6 символов" placeholderTextColor="#777D8C"/>
  {authMessage!==""&&<Text style={s.authMessage}>{authMessage}</Text>}
  <TouchableOpacity disabled={authBusy} onPress={handleAuth} style={[s.button,{marginTop:20,opacity:authBusy?0.6:1}]}><Text style={s.buttonText}>{authBusy?"Подожди...":authMode==="signup"?"Создать аккаунт":"Войти"}</Text></TouchableOpacity>
+ {authMode==="login"&&<TouchableOpacity disabled={resetBusy||authBusy} onPress={()=>void resetPasswordEmail()} style={{padding:12,alignItems:"center",opacity:resetBusy?0.6:1}}><Text style={s.purple}>{resetBusy?"Отправляем письмо...":"Забыли пароль?"}</Text></TouchableOpacity>}
  <TouchableOpacity onPress={()=>{setAuthMode(authMode==="signup"?"login":"signup");setAuthMessage("");}} style={{padding:16,alignItems:"center"}}><Text style={s.purple}>{authMode==="signup"?"Уже есть аккаунт? Войти":"Нет аккаунта? Зарегистрироваться"}</Text></TouchableOpacity>
  <Text style={s.note}>Продолжая, ты подтверждаешь, что тебе исполнилось 18 лет. Сейчас доступен вход по почте; VK и Telegram подключим отдельно.</Text>
  </ScrollView></SafeAreaView>;

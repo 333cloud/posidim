@@ -13,7 +13,8 @@
         {
           "locationWhenInUsePermission": "Разрешить ПОСИДИМ использовать геопозицию, чтобы находить людей рядом. Точное местоположение другим пользователям не показывается."
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true

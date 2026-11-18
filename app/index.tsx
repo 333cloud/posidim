@@ -239,6 +239,12 @@ export default function HomeScreen() {
       const {data,error}=await supabase.from("events").update({status:"cancelled"}).eq("id",ev.id).eq("host_id",session.user.id).eq("status","open").select("id,status").maybeSingle();
       if(error)throw error;
       if(!data)throw new Error("Встреча уже отменена или недоступна.");
+      const notice="Организатор отменил встречу. История чата сохранена.";
+      const {error:noticeError}=await supabase.from("messages").insert({event_id:ev.id,sender_id:session.user.id,body:notice});
+      if(noticeError)console.warn("Не удалось добавить уведомление об отмене в чат:",noticeError.message);
+      const {data:members,error:membersError}=await supabase.from("event_members").select("user_id").eq("event_id",ev.id).eq("status","accepted");
+      if(membersError)console.warn("Не удалось загрузить участников для уведомления:",membersError.message);
+      else for(const member of members||[])void supabase.functions.invoke("send-notification",{body:{recipientId:member.user_id,kind:"group_message",refId:ev.id,title:"Встреча отменена",body:"Организатор отменил встречу. Открой чат, чтобы увидеть подробности."}}).catch((notificationError:any)=>console.warn("Не удалось отправить push об отмене:",notificationError?.message||notificationError));
       setEvents(items=>items.filter(item=>item.id!==ev.id));
       setGroupEvents(items=>items.map(item=>item.id===ev.id?{...item,status:"cancelled"}:item));
       Alert.alert("Встреча отменена","Она больше не показывается в поиске.");

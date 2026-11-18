@@ -6,7 +6,15 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "scheme": "posidim",
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Разрешить ПОСИДИМ использовать геопозицию, чтобы находить людей рядом. Точное местоположение другим пользователям не показывается."
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
     },

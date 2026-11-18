@@ -8,22 +8,29 @@ $files = @(
     @{ Url = "$baseUrl/app/index.tsx"; OutFile = ".\app\index.tsx" },
     @{ Url = "$baseUrl/package.json"; OutFile = ".\package.json" },
     @{ Url = "$baseUrl/app.json"; OutFile = ".\app.json" },
-    @{ Url = "$baseUrl/tsconfig.json"; OutFile = ".\tsconfig.json" },
-    @{ Url = "$baseUrl/supabase/next_features.sql"; OutFile = ".\supabase\next_features.sql" }
+    @{ Url = "$baseUrl/tsconfig.json"; OutFile = ".\tsconfig.json" }
 )
 
 foreach ($file in $files) {
+    $directory = Split-Path -Parent $file.OutFile
+    if ($directory -and -not (Test-Path $directory)) {
+        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    }
+
     Write-Host "Downloading $($file.OutFile)..." -ForegroundColor Cyan
     Invoke-WebRequest -Uri $file.Url -OutFile $file.OutFile
+    if (-not (Test-Path $file.OutFile)) {
+        throw "Download failed: $($file.OutFile)"
+    }
 }
 
 Write-Host ""
 Write-Host "Installing project dependencies..." -ForegroundColor Cyan
 npm.cmd install
 if ($LASTEXITCODE -ne 0) {
-    throw "npm install failed. Please send me the error text."
+    throw "npm install failed. Check the error output above."
 }
 
 Write-Host ""
-Write-Host "Done! Project files have been updated." -ForegroundColor Green
-Write-Host "Next: run supabase\next_features.sql in the Supabase SQL Editor, if you have not already done so."
+Write-Host "Update completed successfully." -ForegroundColor Green
+Write-Host "Start the app with: npx.cmd expo start --web"

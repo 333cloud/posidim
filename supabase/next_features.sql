@@ -350,3 +350,31 @@ for each row execute function public.enforce_event_invitation_rate();
 revoke all on function public.enforce_profile_reaction_rate() from public, anon, authenticated;
 revoke all on function public.enforce_direct_message_rate() from public, anon, authenticated;
 revoke all on function public.enforce_event_invitation_rate() from public, anon, authenticated;
+
+create or replace function public.enforce_group_message_rate()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_count integer;
+begin
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(new.sender_id::text || ':group_messages', 0));
+  select count(*) into v_count
+  from public.messages m
+  where m.sender_id = new.sender_id
+    and m.created_at > now() - interval '5 minutes';
+  if v_count >= 30 then
+    raise exception 'Слишком много сообщений в групповых чатах. Подожди немного.';
+  end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists messages_rate_limit on public.messages;
+create trigger messages_rate_limit
+before insert on public.messages
+for each row execute function public.enforce_group_message_rate();
+
+revoke all on function public.enforce_group_message_rate() from public, anon, authenticated;

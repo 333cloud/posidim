@@ -151,8 +151,8 @@ begin
   join public.profiles p on p.id = ul.user_id
   cross join lateral (
     select
-      pg_catalog.mod(pg_catalog.abs(pg_catalog.hashtextextended(auth.uid()::text || ':' || p.id::text || ':angle', 0))::numeric, 628319)::double precision / 100000.0 as angle,
-      0.3 + pg_catalog.mod(pg_catalog.abs(pg_catalog.hashtextextended(auth.uid()::text || ':' || p.id::text || ':distance', 0))::numeric, 700000)::double precision / 1000000.0 as offset_km
+      pg_catalog.mod(pg_catalog.abs(pg_catalog.hashtextextended(p.id::text || ':angle', 0))::numeric, 628319)::double precision / 100000.0 as angle,
+      0.3 + pg_catalog.mod(pg_catalog.abs(pg_catalog.hashtextextended(p.id::text || ':distance', 0))::numeric, 700000)::double precision / 1000000.0 as offset_km
   ) jitter
   where ul.user_id <> auth.uid()
     and p.is_discoverable = true

@@ -1,5 +1,21 @@
 -- ПОСИДИМ: взаимные симпатии и совпадения
--- Выполнять после schema.sql и discovery_and_events.sql.
+-- Выполнять после schema.sql и profile_gallery_privacy.sql.
+-- Таблица реакций создаётся здесь повторно безопасно, если discovery-миграция ещё не запускалась.
+create table if not exists public.profile_reactions (
+  actor_id uuid not null references public.profiles(id) on delete cascade,
+  target_id uuid not null references public.profiles(id) on delete cascade,
+  liked boolean not null,
+  created_at timestamptz not null default now(),
+  primary key (actor_id, target_id),
+  check (actor_id <> target_id)
+);
+alter table public.profile_reactions enable row level security;
+drop policy if exists "profile_reactions_read_self" on public.profile_reactions;
+create policy "profile_reactions_read_self" on public.profile_reactions
+for select to authenticated using (actor_id = (select auth.uid()));
+grant select on public.profile_reactions to authenticated;
+create index if not exists profile_reactions_actor_idx
+  on public.profile_reactions(actor_id, liked, created_at desc);
 
 create table if not exists public.profile_matches (
   user_low uuid not null references public.profiles(id) on delete cascade,
@@ -39,7 +55,7 @@ begin
   if p_target_id is null or p_target_id = v_actor then
     raise exception 'Нельзя поставить реакцию этому профилю';
   end if;
-  if not exists (
+  if p_liked and not exists (
     select 1 from public.profiles p
     where p.id = p_target_id and p.is_discoverable = true
   ) then
@@ -52,6 +68,12 @@ begin
   ) then
     raise exception 'Действие недоступно';
   end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(
+      least(v_actor::text, p_target_id::text) || ':' || greatest(v_actor::text, p_target_id::text), 0
+    )
+  );
 
   insert into public.profile_reactions(actor_id, target_id, liked)
   values (v_actor, p_target_id, p_liked)

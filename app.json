@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "ПОСИДИМ",
+    "slug": "posidim",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "scheme": "posidim",
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.333cloud.posidim"
+    },
+    "android": {
+      "package": "com.333cloud.posidim"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

@@ -4,9 +4,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
-  const url = Deno.env.get("SUPABASE_URL")!;
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const url = Deno.env.get("SUPABASE_URL");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("POSIDIM_SERVICE_ROLE_KEY");
   const authHeader = req.headers.get("Authorization");
+  if (!url || !serviceKey) return Response.json({ error: "Server is not configured" }, { status: 500 });
   if (!authHeader) return Response.json({ error: "Unauthorized" }, { status: 401 });
   const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
   const callerClient = createClient(url, Deno.env.get("SUPABASE_ANON_KEY") ?? serviceKey, {

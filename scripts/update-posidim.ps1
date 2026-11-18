@@ -12,17 +12,17 @@ $files = @(
 )
 
 foreach ($file in $files) {
-    Write-Host "Скачиваю $($file.OutFile)..." -ForegroundColor Cyan
+    Write-Host "Downloading $($file.OutFile)..." -ForegroundColor Cyan
     Invoke-WebRequest -Uri $file.Url -OutFile $file.OutFile
 }
 
 Write-Host ""
-Write-Host "Устанавливаю зависимости проекта..." -ForegroundColor Cyan
+Write-Host "Installing project dependencies..." -ForegroundColor Cyan
 npm.cmd install
 if ($LASTEXITCODE -ne 0) {
-    throw "npm install завершился с ошибкой. Пришли мне текст ошибки."
+    throw "npm install failed. Please send me the error text."
 }
 
 Write-Host ""
-Write-Host "Готово! Файлы приложения обновлены." -ForegroundColor Green
-Write-Host "Следующий шаг: выполнить supabase\next_features.sql в Supabase SQL Editor, если ещё не выполнял."
+Write-Host "Done! Project files have been updated." -ForegroundColor Green
+Write-Host "Next: run supabase\next_features.sql in the Supabase SQL Editor, if you have not already done so."

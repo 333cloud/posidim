@@ -110,3 +110,31 @@ before insert on public.messages
 for each row execute function public.enforce_group_message_rate();
 
 revoke all on function public.enforce_group_message_rate() from public, anon, authenticated;
+
+create or replace function public.enforce_report_rate()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $function$
+declare
+  v_count integer;
+begin
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(new.reporter_id::text || ':reports', 0));
+  select count(*) into v_count
+  from public.reports r
+  where r.reporter_id = new.reporter_id
+    and r.created_at > now() - interval '1 hour';
+  if v_count >= 10 then
+    raise exception 'Слишком много жалоб за короткое время. Попробуй позже.';
+  end if;
+  return new;
+end;
+$function$;
+
+drop trigger if exists reports_rate_limit on public.reports;
+create trigger reports_rate_limit
+before insert on public.reports
+for each row execute function public.enforce_report_rate();
+
+revoke all on function public.enforce_report_rate() from public, anon, authenticated;

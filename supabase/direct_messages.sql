@@ -25,33 +25,38 @@ create index if not exists direct_conversations_user_two_idx
 alter table public.direct_conversations enable row level security;
 alter table public.direct_messages enable row level security;
 
+-- Проверка выполняется с правами владельца функции, поэтому учитывает блокировку с любой стороны.
+create or replace function public.can_access_direct_conversation(p_conversation_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $
+  select exists (
+    select 1
+    from public.direct_conversations c
+    where c.id = p_conversation_id
+      and ((c.user_one = auth.uid()) or (c.user_two = auth.uid()))
+      and not exists (
+        select 1 from public.user_blocks b
+        where (b.blocker_id = auth.uid() and b.blocked_id = case when c.user_one = auth.uid() then c.user_two else c.user_one end)
+           or (b.blocker_id = case when c.user_one = auth.uid() then c.user_two else c.user_one end and b.blocked_id = auth.uid())
+      )
+  );
+$;
+revoke all on function public.can_access_direct_conversation(uuid) from public;
+grant execute on function public.can_access_direct_conversation(uuid) to authenticated;
+
 drop policy if exists "direct_conversations_read_member" on public.direct_conversations;
 create policy "direct_conversations_read_member" on public.direct_conversations
 for select to authenticated
-using (
-  ((select auth.uid()) = user_one or (select auth.uid()) = user_two)
-  and not exists (
-    select 1 from public.user_blocks b
-    where (b.blocker_id = (select auth.uid()) and b.blocked_id = case when user_one = (select auth.uid()) then user_two else user_one end)
-       or (b.blocker_id = case when user_one = (select auth.uid()) then user_two else user_one end and b.blocked_id = (select auth.uid()))
-  )
-);
+using (public.can_access_direct_conversation(id));
 
 drop policy if exists "direct_messages_read_member" on public.direct_messages;
 create policy "direct_messages_read_member" on public.direct_messages
 for select to authenticated
-using (
-  exists (
-    select 1 from public.direct_conversations c
-    where c.id = conversation_id
-      and ((c.user_one = (select auth.uid())) or (c.user_two = (select auth.uid())))
-      and not exists (
-        select 1 from public.user_blocks b
-        where (b.blocker_id = (select auth.uid()) and b.blocked_id = case when c.user_one = (select auth.uid()) then c.user_two else c.user_one end)
-           or (b.blocker_id = case when c.user_one = (select auth.uid()) then c.user_two else c.user_one end and b.blocked_id = (select auth.uid()))
-      )
-  )
-);
+using (public.can_access_direct_conversation(conversation_id));
 
 drop policy if exists "direct_messages_send_member" on public.direct_messages;
 create policy "direct_messages_send_member" on public.direct_messages

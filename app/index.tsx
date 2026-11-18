@@ -16,10 +16,14 @@ const START_EVENTS:EventItem[] = [
 function MapSurface({ city, radius }: { city: string; radius: string }) {
  const km = Number.parseInt(radius, 10) || 10;
  const safeCity = JSON.stringify(city.trim());
- const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><style>html,body,#map{height:100%;width:100%;margin:0;background:#e8e6df}.leaflet-container{font:13px system-ui}.leaflet-control-attribution{font-size:9px!important}.leaflet-bar a{color:#222!important}</style></head><body><div id="map"></div><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script>
-(async()=>{const city=${safeCity};const km=${km};const map=L.map('map',{zoomControl:true,scrollWheelZoom:true}).setView([25,0],2);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(map);
-if(city){try{const q=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(city));const hits=await q.json();if(hits&&hits[0]){const lat=Number(hits[0].lat),lon=Number(hits[0].lon);const circle=L.circle([lat,lon],{radius:km*1000,color:'#7956c7',weight:2,fillColor:'#a78bfa',fillOpacity:.12}).addTo(map);map.fitBounds(circle.getBounds(),{padding:[24,24]});}}catch(e){map.setView([25,0],2);}}
+ const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css"><style>html,body,#map{height:100%;width:100%;margin:0;background:#e8e6df}.leaflet-container{font:13px system-ui}.leaflet-control-attribution{font-size:9px!important}.leaflet-bar a{color:#222!important}.leaflet-control-zoom a{width:38px!important;height:38px!important;line-height:38px!important;font-size:22px!important}</style></head><body><div id="map"></div><script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script><script>
+(async()=>{const city=${safeCity};const km=${km};const map=L.map('map',{zoomControl:true,scrollWheelZoom:true,dragging:true,touchZoom:true,doubleClickZoom:true}).setView([25,0],2);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors &copy; CARTO'}).addTo(map);
+let circle=null;
+const applyRadius=(lat,lon)=>{if(circle)map.removeLayer(circle);circle=L.circle([lat,lon],{radius:km*1000,color:'#7956c7',weight:2,fillColor:'#a78bfa',fillOpacity:.12}).addTo(map);map.fitBounds(circle.getBounds(),{padding:[28,28]});};
+if(city){try{const q=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(city));const hits=await q.json();if(hits&&hits[0])applyRadius(Number(hits[0].lat),Number(hits[0].lon));}catch(e){}}
+setTimeout(()=>map.invalidateSize(true),250);
+window.addEventListener('resize',()=>map.invalidateSize(true));
 })();</script></body></html>`;
  if (Platform.OS === "web") return createElement("iframe" as any, { srcDoc: html, title: "Карта ПОСИДИМ", style: { width: "100%", height: "100%", border: 0, display: "block" }, loading: "lazy" } as any);
  return <WebView originWhitelist={["*"]} source={{ html }} javaScriptEnabled domStorageEnabled style={{ flex: 1, backgroundColor: "#e8e6df" }} />;
@@ -127,7 +131,7 @@ const s=StyleSheet.create({
  quickTile:{width:"31.5%",minHeight:86,backgroundColor:"#171A22",borderRadius:14,borderWidth:1,borderColor:"#303541",alignItems:"center",justifyContent:"center",gap:6,padding:9},
  quickTileText:{color:"#F5F5F7",fontSize:11,fontWeight:"700"},
  mapPreview:{backgroundColor:"#151820",borderRadius:17,borderWidth:1,borderColor:"#292E39",padding:14,marginBottom:18},
- realMap:{height:420,borderRadius:13,overflow:"hidden",marginTop:10,backgroundColor:"#e8e6df"},
+ realMap:{height:520,minHeight:520,borderRadius:13,overflow:"hidden",marginTop:10,backgroundColor:"#e8e6df"},
  mapCanvas:{height:190,backgroundColor:"#202A2B",borderRadius:13,marginTop:10,overflow:"hidden",position:"relative"},
  mapRoad:{position:"absolute",left:-20,width:"120%",height:13,backgroundColor:"#344244",borderWidth:1,borderColor:"#53615A"},
  mapPin:{position:"absolute",alignItems:"center",backgroundColor:"#171A22",borderRadius:13,padding:5,borderWidth:1,borderColor:"#A78BFA"},

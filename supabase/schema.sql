@@ -67,8 +67,27 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  age_text text;
 begin
-  if coalesce(new.raw_user_meta_data ->> 'age', '') !~ '^[0-9]{1,3}
+  age_text := new.raw_user_meta_data ->> 'age';
+
+  if age_text is null or age_text !~ '^[0-9]{1,3}$' then
+    raise exception 'Укажи возраст от 18 до 120 лет';
+  end if;
+
+  if age_text::integer < 18 or age_text::integer > 120 then
+    raise exception 'Регистрация доступна только пользователям от 18 лет';
+  end if;
+
+  insert into public.profiles (id, display_name, age, city)
+  values (
+    new.id,
+    coalesce(nullif(new.raw_user_meta_data ->> 'display_name',''), 'Новый пользователь'),
+    age_text::integer,
+    coalesce(new.raw_user_meta_data ->> 'city','')
+  );
+  return new;
 end;
 $$;
 

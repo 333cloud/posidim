@@ -1,12 +1,12 @@
 // Supabase Edge Function: delete-account
-// Deploy with SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY set as Edge Function secrets.
+// Uses the platform-provided service role key, or POSIDIM_SERVICE_ROLE_KEY if configured manually.
 // Invoke with the user's Authorization: Bearer access-token header.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
   const url = Deno.env.get("SUPABASE_URL");
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("POSIDIM_SERVICE_ROLE_KEY");
   const authHeader = req.headers.get("Authorization");
   if (!url || !serviceKey || !authHeader) return Response.json({ error: "Server is not configured" }, { status: 500 });
 

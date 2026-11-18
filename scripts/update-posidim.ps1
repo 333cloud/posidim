@@ -8,6 +8,7 @@ $files = @(
     @{ Url = "$baseUrl/app/index.tsx"; OutFile = ".\app\index.tsx" },
     @{ Url = "$baseUrl/package.json"; OutFile = ".\package.json" },
     @{ Url = "$baseUrl/app.json"; OutFile = ".\app.json" },
+    @{ Url = "$baseUrl/tsconfig.json"; OutFile = ".\tsconfig.json" },
     @{ Url = "$baseUrl/supabase/next_features.sql"; OutFile = ".\supabase\next_features.sql" }
 )
 

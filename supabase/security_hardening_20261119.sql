@@ -76,3 +76,48 @@ grant execute on function public.set_my_message_preference(text) to authenticate
 revoke all on function public.create_profile_for_new_user() from public, anon, authenticated;
 revoke all on function public.enforce_profile_photo_limit() from public, anon, authenticated;
 revoke all on function public.touch_direct_conversation() from public, anon, authenticated;
+
+
+-- SECURITY DEFINER helpers must not accept spoofed user identities from RPC callers.
+create or replace function public.can_view_profile(p_viewer uuid, p_target uuid)
+returns boolean
+language sql stable security definer set search_path = ''
+as $function$
+  select p_viewer = (select auth.uid())
+    and (
+      p_viewer = p_target
+      or (
+        exists (select 1 from public.profiles p where p.id = p_target and p.is_discoverable = true)
+        and not exists (
+          select 1 from public.user_blocks b
+          where (b.blocker_id = p_viewer and b.blocked_id = p_target)
+             or (b.blocker_id = p_target and b.blocked_id = p_viewer)
+        )
+      )
+    );
+$function$;
+
+create or replace function public.can_receive_direct_message(p_sender_id uuid, p_recipient_id uuid)
+returns boolean
+language sql stable security definer set search_path = ''
+as $function$
+  select p_sender_id = (select auth.uid())
+    and p_sender_id is not null and p_recipient_id is not null and p_sender_id <> p_recipient_id
+    and case coalesce((select pref.allowed_from from public.user_message_preferences pref where pref.user_id=p_recipient_id),'matches')
+      when 'all' then true
+      when 'liked' then exists (
+        select 1 from public.profile_reactions r
+        where r.actor_id=p_recipient_id and r.target_id=p_sender_id and r.liked=true
+      )
+      else exists (
+        select 1 from public.profile_matches m
+        where m.user_low=least(p_sender_id,p_recipient_id)
+          and m.user_high=greatest(p_sender_id,p_recipient_id)
+      )
+    end
+    and not exists (
+      select 1 from public.user_blocks b
+      where (b.blocker_id=p_sender_id and b.blocked_id=p_recipient_id)
+         or (b.blocker_id=p_recipient_id and b.blocked_id=p_sender_id)
+    );
+$function$;

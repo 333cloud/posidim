@@ -78,7 +78,7 @@
 - RPC-проверки приватности профиля и возможности начать личный чат сверяют инициатора с auth.uid(), а не доверяют переданному клиентом UUID.
 - Storage: avatars — публичное чтение, profile-photos — приватное чтение; для обоих бакетов ограничение 5 МБ и MIME JPEG/PNG/WebP.
 - Edge Functions delete-account и send-notification развёрнуты и активны с обязательной JWT-проверкой.
-- Локально на Windows успешно прошли TypeScript check и Expo Web export; CI проходил на предыдущих коммитах.
+- Локально на Windows успешно прошли npm audit (0 уязвимостей), Expo SDK dependency check, TypeScript check и Expo Web export; эти проверки включены в CI.
 
 ## 8. Блокеры перед реальным запуском
 

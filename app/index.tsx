@@ -10,13 +10,6 @@ import Constants from "expo-constants";
 import { Alert, Image, Modal, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 
 type EventItem = { id:string|number; host_id?:string; title:string; category:string; place:string; time:string; people:number; capacity:number; host:string; initials:string; accent:string; description:string; startsAt?:string; pendingRequests?:number };
-const START_EVENTS:EventItem[] = [
- {id:1,title:"Вечер настольных игр",category:"Игры",place:"Центр · уютное кафе",time:"Сегодня, 19:00",people:3,capacity:5,host:"Алексей",initials:"А",accent:"#8B7CFF",description:"Ищем компанию для лёгких настолок, общения и хорошего вечера. Новичкам тоже рады."},
- {id:2,title:"Кофе и разговоры",category:"Кофе",place:"Рядом с парком",time:"Завтра, 12:30",people:2,capacity:4,host:"Марина",initials:"М",accent:"#E7A66A",description:"Без спешки познакомимся, выпьем кофе и обсудим всё на свете."},
- {id:3,title:"Прогулка и новые знакомства",category:"Прогулка",place:"Городской парк",time:"Суббота, 15:00",people:4,capacity:6,host:"Игорь",initials:"И",accent:"#69C6A5",description:"Пройдёмся по красивому маршруту, познакомимся и найдём новых друзей."},
- {id:4,title:"Пообщаемся после работы",category:"Общение",place:"Бар в центре",time:"Пятница, 20:00",people:2,capacity:4,host:"Денис",initials:"Д",accent:"#E47C91",description:"Неформальный вечер в общественном месте. Можно прийти просто пообщаться."}
-];
-
 function MapSurface({ city, radius, events, people = [], userLocation = null }: { city: string; radius: string; events: EventItem[]; people?: any[]; userLocation?: {latitude:number;longitude:number}|null }) {
  const km = Number.parseInt(radius, 10) || 10;
  const safeCity = JSON.stringify(city.trim());
@@ -46,8 +39,6 @@ const QUICK_ACTIVITIES = ["Кофе","Прогулка","Кино","Спорт",
 const QUICK_TIMES = ["Через 20 минут","Через 30 минут","Через час","Через 2 часа"];
 const formatDateInput = (date:Date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
 const formatTimeInput = (date:Date) => `${String(date.getHours()).padStart(2,"0")}:${String(date.getMinutes()).padStart(2,"0")}`;
-const PEOPLE = [{name:"Аня",age:27,about:"Люблю кофе, прогулки и новые знакомства",tag:"Кофе"},{name:"Максим",age:31,about:"Настолки, кино и разговоры обо всём",tag:"Игры"},{name:"Саша",age:25,about:"Ищу компанию для прогулок по городу",tag:"Прогулка"}];
-
 export default function HomeScreen() {
  const [session,setSession] = useState<any>(null);
  const [authLoading,setAuthLoading] = useState(true);

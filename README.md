@@ -36,7 +36,7 @@
 Открой PowerShell в папке проекта:
 
 ```powershell
-npm.cmd ci
+npm.cmd install
 npx.cmd expo start --web
 ```
 
@@ -54,7 +54,7 @@ npm.cmd run typecheck
 
 ## Обновление проекта
 
-В репозитории есть скрипт `scripts/update-posidim.ps1`, который скачивает `app/index.tsx`, `package.json`, `app.json` и `tsconfig.json`, затем устанавливает зависимости. SQL-миграции он не скачивает и не запускает. Запускай его из корневой папки проекта:
+В репозитории есть скрипт `scripts/update-posidim.ps1`, который синхронизирует исходники, конфигурацию, документацию и SQL-файлы из `main`, сохраняет локальные `node_modules` и `.expo`, затем устанавливает зависимости. SQL-миграции он не запускает. Запускай его из корневой папки проекта:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\update-posidim.ps1
@@ -69,6 +69,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\update-posidim.ps1
 - `supabase/` — SQL-схема, политики доступа, функции и миграции.
 - `supabase/functions/` — Edge Functions.
 - `docs/LAUNCH_CHECKLIST.md` — чек-лист перед публичным запуском.
+- `docs/EAS_SETUP.md` — привязка Expo/EAS и сборки Android/iOS.
 - `docs/COMMUNITY_RULES_DRAFT.md` — черновик правил сообщества.
 
 ## Важные замечания
@@ -76,6 +77,6 @@ powershell -ExecutionPolicy Bypass -File .\scripts\update-posidim.ps1
 - В клиентском приложении используется только публичный Supabase key. Никогда не добавляй `service_role` или secret key в мобильное/web-приложение.
 - Не публикуй точные координаты пользователей. Геопоиск должен быть добровольным и отключаемым.
 - Email подтверждается через `posidim://auth/confirm`, восстановление пароля — через `posidim://auth/callback`; в Supabase Auth Redirect URLs нужно разрешить оба адреса и соответствующие пути на web-сайте.
-- Push-разрешение запрашивается только по нажатию пользователя в профиле. Для реальной доставки на Android/iOS нужно настроить EAS projectId и проверить серверную отправку; web push не подключён.
+- Push-разрешение запрашивается только по нажатию пользователя в профиле; нажатие на push открывает соответствующий раздел приложения. Для реальной доставки на Android/iOS нужно настроить EAS projectId и push credentials; web push не подключён.
 - Push-уведомления, модерация и удаление аккаунта требуют настройки и проверки соответствующих серверных функций.
 - Перед публичным запуском нужно пройти чек-лист безопасности, протестировать сценарии с несколькими аккаунтами и проверить юридические документы для стран распространения.

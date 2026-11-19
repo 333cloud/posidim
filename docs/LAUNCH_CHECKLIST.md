@@ -82,7 +82,7 @@
 - RPC-проверки приватности профиля и возможности начать личный чат сверяют инициатора с auth.uid(), а не доверяют переданному клиентом UUID.
 - Storage: avatars — публичное чтение, profile-photos — приватное чтение; для обоих бакетов ограничение 5 МБ и MIME JPEG/PNG/WebP.
 - Edge Functions delete-account и send-notification развёрнуты и активны с обязательной JWT-проверкой.
-- Локально на Windows успешно прошли npm audit (0 уязвимостей), Expo SDK dependency check, TypeScript check и Expo exports для Web, Android и iOS; все эти проверки включены в CI.
+- В GitHub Actions на commit `8226fc9a68ce181ab9000ce3ef0d899f73f9b3a3` успешно завершились `npm ci`, `npm audit --audit-level=high`, `expo install --check`, `expo-doctor`, TypeScript и exports Web/Android/iOS. Это проверка JavaScript bundle/export, не замена native EAS build или физического тестирования. Локальный полный прогон Windows отдельно не подтверждён.
 
 ## 8. Блокеры перед реальным запуском
 

@@ -158,7 +158,10 @@ export default function HomeScreen() {
    else if(kind==="direct_message"||kind==="group_message")setTab("Чаты");
   };
   void Notifications.getLastNotificationResponseAsync().then(response=>{
-   if(response)openNotificationDestination(response);
+   if(response){
+    openNotificationDestination(response);
+    void Notifications.clearLastNotificationResponseAsync();
+   }
   }).catch(()=>{});
   const subscription=Notifications.addNotificationResponseReceivedListener(openNotificationDestination);
   return()=>subscription.remove();

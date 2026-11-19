@@ -369,6 +369,6 @@
 
 - Исправлены Android package и iOS bundle identifier на валидный единый идентификатор `com.posidim.app` до публикации приложения.
 - Явно добавлен SDK-совместимый `expo-font ~14.0.12`: это устраняет недостающую peer dependency и конфликт версий `expo-font` в native dependency tree.
-- Supabase: добавлены индексы для 12 ранее неиндексированных внешних ключей.
+- Supabase: добавлены индексы для 12 ранее неиндексированных внешних ключей; SQL сохранён в `supabase/migrations/20261119011141_performance_hardening.sql`.
 - Оптимизированы 21 RLS-политика: `auth.uid()` вычисляется через scalar SELECT; Supabase Advisor больше не показывает предупреждение `auth_rls_initplan`.
 - В CI добавлена проверка `expo-doctor` наряду с audit, SDK check, TypeScript и экспортами платформ.

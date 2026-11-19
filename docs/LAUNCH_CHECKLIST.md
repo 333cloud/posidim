@@ -7,7 +7,7 @@
 - [ ] Выполнить все миграции в правильном порядке и сохранить журнал выполненных SQL.
 - [ ] Проверить RLS для каждой таблицы под двумя независимыми аккаунтами.
 - [ ] Проверить Storage buckets, тип доступа, MIME-типы, лимиты и политики удаления.
-- [ ] Добавить `posidim://auth/callback` и `posidim://auth/confirm` в Supabase Auth → URL Configuration → Redirect URLs.
+- [ ] Добавить `posidim://auth/callback`, `posidim://auth/confirm` и `posidim://auth/social` в Supabase Auth → URL Configuration → Redirect URLs; на опубликованном Web URL разрешить `/auth/callback`, `/auth/confirm` и `/auth/social`, проверить каждый маршрут реальным входом.
 - [ ] Добавить URL сайта с путями `/auth/callback` и `/auth/confirm` (и адрес локальной web-разработки, если нужен) в Redirect URLs; проверить подтверждение email и восстановление пароля по письму на Android, iOS и Web.
 - [ ] Проверить резервное копирование и процедуру восстановления Supabase.
 - [ ] Настроить мониторинг ошибок и оповещения.

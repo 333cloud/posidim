@@ -432,7 +432,7 @@ export default function HomeScreen() {
   catch(error:any){setAuthMessage(error?.message||"Код неверный или устарел. Запроси новый SMS.");}
   finally{setAuthBusy(false);}
  };
- const signInSocial=async(provider:"custom:telegram"|"custom:vk",label:string)=>{
+ const signInSocial=async(provider:"custom:telegram",label:string)=>{
   setAuthMessage("");setAuthBusy(true);
   try{
    const redirectTo=Platform.OS==="web"?(typeof window!=="undefined"?new URL("/auth/social",window.location.origin).toString():undefined):"posidim://auth/social";
@@ -606,7 +606,7 @@ export default function HomeScreen() {
  {authMessage!==""&&<Text style={s.authMessage}>{authMessage}</Text>}
  <View style={{marginTop:20,borderTopWidth:1,borderTopColor:"#292E39",paddingTop:16}}>
   <Text style={[s.muted,{textAlign:"center",marginBottom:4}]}>Или продолжи через</Text>
-  <TouchableOpacity disabled={authBusy} onPress={()=>void signInSocial("custom:vk","VK ID")} style={[s.button,s.secondary,{marginTop:10,opacity:authBusy?0.6:1}]}><Text style={s.secondaryText}>Войти через VK ID</Text></TouchableOpacity>
+  <TouchableOpacity disabled={true} style={[s.button,s.secondary,{marginTop:10,opacity:0.48}]}><Text style={s.secondaryText}>VK ID — скоро</Text></TouchableOpacity>
   <TouchableOpacity disabled={authBusy} onPress={()=>void signInSocial("custom:telegram","Telegram")} style={[s.button,s.secondary,{marginTop:9,opacity:authBusy?0.6:1}]}><Text style={s.secondaryText}>Войти через Telegram</Text></TouchableOpacity>
  </View>
  <TouchableOpacity onPress={()=>{setAuthMode(authMode==="signup"?"login":"signup");setPhoneOtpSent(false);setPhoneOtp("");setAuthMessage("");}} style={{padding:16,alignItems:"center"}}><Text style={s.purple}>{authMode==="signup"?"Уже есть аккаунт? Войти":"Нет аккаунта? Зарегистрироваться"}</Text></TouchableOpacity>

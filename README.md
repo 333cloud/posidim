@@ -36,7 +36,7 @@
 Открой PowerShell в папке проекта:
 
 ```powershell
-npm.cmd install
+npm.cmd ci
 npx.cmd expo start --web
 ```
 

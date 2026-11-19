@@ -26,7 +26,7 @@ try {
     }
 
     Write-Host "Installing locked dependencies..." -ForegroundColor Cyan
-    npm.cmd ci --no-audit --no-fund
+    npm.cmd install --no-audit --no-fund
     if ($LASTEXITCODE -ne 0) {
         throw "Dependency installation failed. Check the npm output above."
     }

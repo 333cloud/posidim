@@ -37,3 +37,11 @@ Set the production Site URL to the actual web domain. Replace YOUR_WEB_DOMAIN wi
 The web host must serve the Expo SPA entry point for /auth/confirm and /auth/callback (history fallback to index.html), otherwise email links may return a 404 before the app can process the PKCE code.
 
 In Supabase Dashboard → Authentication → Sign In / Providers → Email, enable “Prevent use of leaked passwords”. Supabase currently offers this HaveIBeenPwned check on Pro plans and above; if this project is on Free, the setting cannot be enabled without upgrading. Supabase Advisor currently reports it as disabled.
+
+## First preview builds (after linking EAS)
+
+- Android installable preview APK: `eas build --platform android --profile preview`
+- iOS simulator preview (does not require device provisioning): `eas build --platform ios --profile preview-ios-simulator`
+- iOS internal build for registered test devices: `eas build --platform ios --profile preview`
+
+The simulator build is for simulator testing only, not App Store distribution. The project must first be linked to the Expo account using `eas init` and an EAS project ID added to `app.json`.

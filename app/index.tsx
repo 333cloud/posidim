@@ -55,7 +55,7 @@ export default function HomeScreen() {
  const [email,setEmail] = useState("");
  const [password,setPassword] = useState("");
  const [authName,setAuthName] = useState("");
- const [authAge,setAuthAge] = useState("18");
+ const [authAge,setAuthAge] = useState("");
  const [authCity,setAuthCity] = useState("");
  const [authBusy,setAuthBusy] = useState(false);
  const [resetBusy,setResetBusy] = useState(false);

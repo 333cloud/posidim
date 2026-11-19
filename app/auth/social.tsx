@@ -6,16 +6,18 @@ import { supabase } from "../../lib/supabase";
 export default function SocialAuthCallbackScreen() {
   const params = useLocalSearchParams<{ code?: string | string[]; error?: string | string[]; error_description?: string | string[] }>();
   const code = Array.isArray(params.code) ? params.code[0] : params.code;
+  const rawError = Array.isArray(params.error) ? params.error[0] : params.error;
   const linkError = Array.isArray(params.error_description) ? params.error_description[0] : params.error_description;
+  const authError = linkError || rawError;
   const [busy, setBusy] = useState(true);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
     let active = true;
     const finish = async () => {
-      if (linkError || !code) {
+      if (authError || !code) {
         if (active) {
-          setMessage(linkError || "В ссылке авторизации нет кода. Попробуй войти ещё раз.");
+          setMessage(authError ? "Авторизация отменена или не завершилась. Попробуй войти ещё раз." : "В ссылке авторизации нет кода. Попробуй войти ещё раз.");
           setBusy(false);
         }
         return;
@@ -33,7 +35,7 @@ export default function SocialAuthCallbackScreen() {
     };
     void finish();
     return () => { active = false; };
-  }, [code, linkError]);
+  }, [code, authError]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#0B0D12" }}>

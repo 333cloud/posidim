@@ -363,3 +363,12 @@
 - Клиент Supabase переведён на PKCE flow; app scheme уже задан как `posidim`. Новые SQL-миграции и npm-зависимости не добавлены.
 - Для работы писем нужно добавить `posidim://auth/confirm`, `posidim://auth/callback` и адреса web-сайта с соответствующими путями в Supabase Auth → URL Configuration → Redirect URLs. Это действие в Dashboard из репозитория выполнить нельзя.
 - Подтверждение и восстановление должны быть проверены на реальных Android/iOS сборках и на опубликованном web-домене после настройки Redirect URLs и email templates.
+
+
+## Дополнительная стабилизация проекта — 2026-11-19
+
+- Исправлены Android package и iOS bundle identifier на валидный единый идентификатор `com.posidim.app` до публикации приложения.
+- Явно добавлен SDK-совместимый `expo-font ~14.0.12`: это устраняет недостающую peer dependency и конфликт версий `expo-font` в native dependency tree.
+- Supabase: добавлены индексы для 12 ранее неиндексированных внешних ключей.
+- Оптимизированы 21 RLS-политика: `auth.uid()` вычисляется через scalar SELECT; Supabase Advisor больше не показывает предупреждение `auth_rls_initplan`.
+- В CI добавлена проверка `expo-doctor` наряду с audit, SDK check, TypeScript и экспортами платформ.

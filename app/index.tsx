@@ -148,6 +148,22 @@ export default function HomeScreen() {
  const [moderationQueue,setModerationQueue] = useState<any[]>([]);
  const [moderationBusy,setModerationBusy] = useState(false);
  const [deleteBusy,setDeleteBusy] = useState(false);
+
+ useEffect(()=>{
+  if(Platform.OS==="web")return;
+  const openNotificationDestination=(response:any)=>{
+   const kind=response?.notification?.request?.content?.data?.kind;
+   if(kind==="like")setTab("Симпатии");
+   else if(kind==="invitation")setTab("Встречи");
+   else if(kind==="direct_message"||kind==="group_message")setTab("Чаты");
+  };
+  void Notifications.getLastNotificationResponseAsync().then(response=>{
+   if(response)openNotificationDestination(response);
+  }).catch(()=>{});
+  const subscription=Notifications.addNotificationResponseReceivedListener(openNotificationDestination);
+  return()=>subscription.remove();
+ },[]);
+
  const [pushBusy,setPushBusy] = useState(false);
  const [pushEnabled,setPushEnabled] = useState(false);
  const [quickPrefsOwner,setQuickPrefsOwner] = useState<string|null>(null);

@@ -36,4 +36,4 @@ Set the production Site URL to the actual web domain. Replace YOUR_WEB_DOMAIN wi
 
 The web host must serve the Expo SPA entry point for /auth/confirm and /auth/callback (history fallback to index.html), otherwise email links may return a 404 before the app can process the PKCE code.
 
-In Supabase Dashboard → Authentication → Security and Protection, enable Leaked Password Protection. This project currently has that protection disabled according to Supabase Advisor.
+In Supabase Dashboard → Authentication → Sign In / Providers → Email, enable “Prevent use of leaked passwords”. Supabase currently offers this HaveIBeenPwned check on Pro plans and above; if this project is on Free, the setting cannot be enabled without upgrading. Supabase Advisor currently reports it as disabled.

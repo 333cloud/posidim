@@ -121,3 +121,26 @@ as $function$
          or (b.blocker_id=p_recipient_id and b.blocked_id=p_sender_id)
     );
 $function$;
+
+
+-- Enforce read-only group chats after an event is cancelled or completed.
+drop policy if exists "messages_send_as_member" on public.messages;
+create policy "messages_send_as_member" on public.messages
+for insert to authenticated
+with check (
+  sender_id = (select auth.uid())
+  and exists (
+    select 1 from public.events e
+    where e.id = messages.event_id
+      and e.status = 'open'
+      and (
+        e.host_id = (select auth.uid())
+        or exists (
+          select 1 from public.event_members em
+          where em.event_id = messages.event_id
+            and em.user_id = (select auth.uid())
+            and em.status = 'accepted'
+        )
+      )
+  )
+);

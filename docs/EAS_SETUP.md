@@ -20,3 +20,20 @@ The repository contains preview and production profiles in eas.json. The Expo ac
 ## Important
 
 No Expo account credentials or EAS project UUID are stored in this repository. Do not commit access tokens, service-role keys, signing certificates or private push credentials. Push notifications are not considered production-ready until real device tokens and delivery have been tested.
+
+## Supabase Auth and web hosting
+
+Add these URLs in Supabase Dashboard → Authentication → URL Configuration:
+
+- posidim://auth/confirm
+- posidim://auth/callback
+- http://localhost:8081/auth/confirm
+- http://localhost:8081/auth/callback
+- https://YOUR_WEB_DOMAIN/auth/confirm
+- https://YOUR_WEB_DOMAIN/auth/callback
+
+Set the production Site URL to the actual web domain. Replace YOUR_WEB_DOMAIN with the real host; do not add a placeholder URL.
+
+The web host must serve the Expo SPA entry point for /auth/confirm and /auth/callback (history fallback to index.html), otherwise email links may return a 404 before the app can process the PKCE code.
+
+In Supabase Dashboard → Authentication → Security and Protection, enable Leaked Password Protection. This project currently has that protection disabled according to Supabase Advisor.

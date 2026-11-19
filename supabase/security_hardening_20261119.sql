@@ -153,3 +153,51 @@ on public.user_message_preferences
 for all to anon, authenticated
 using (false)
 with check (false);
+
+
+-- Keep internal RLS helpers out of the exposed public PostgREST schema.
+create schema if not exists private;
+revoke all on schema private from public, anon;
+grant usage on schema private to authenticated;
+alter function public.can_access_direct_conversation(uuid) set schema private;
+alter function public.can_receive_direct_message(uuid, uuid) set schema private;
+alter function public.can_view_profile(uuid, uuid) set schema private;
+revoke all on function private.can_access_direct_conversation(uuid) from public, anon;
+revoke all on function private.can_receive_direct_message(uuid, uuid) from public, anon;
+revoke all on function private.can_view_profile(uuid, uuid) from public, anon;
+grant execute on function private.can_access_direct_conversation(uuid) to authenticated;
+grant execute on function private.can_receive_direct_message(uuid, uuid) to authenticated;
+grant execute on function private.can_view_profile(uuid, uuid) to authenticated;
+
+create or replace function public.get_or_create_direct_conversation(p_other_user_id uuid)
+returns uuid language plpgsql security definer set search_path = ''
+as $function$
+declare
+  v_me uuid := auth.uid();
+  v_low uuid;
+  v_high uuid;
+  v_id uuid;
+begin
+  if v_me is null then raise exception 'Необходимо войти в аккаунт'; end if;
+  if p_other_user_id is null or p_other_user_id = v_me then
+    raise exception 'Нельзя открыть чат с этим пользователем';
+  end if;
+  v_low := least(v_me, p_other_user_id);
+  v_high := greatest(v_me, p_other_user_id);
+  select c.id into v_id
+  from public.direct_conversations c
+  where c.user_one = v_low and c.user_two = v_high
+    and exists (select 1 from public.direct_messages dm where dm.conversation_id = c.id)
+  limit 1;
+  if v_id is not null then return v_id; end if;
+  if not private.can_receive_direct_message(v_me, p_other_user_id) then
+    raise exception 'Пользователь ограничил круг тех, кто может начинать личный чат';
+  end if;
+  insert into public.direct_conversations(user_one, user_two)
+  values (v_low, v_high)
+  on conflict(user_one, user_two)
+  do update set updated_at = public.direct_conversations.updated_at
+  returning id into v_id;
+  return v_id;
+end;
+$function$;

@@ -7,3 +7,4 @@ web-build/
 !.env.example
 .DS_Store
 *.log
+supabase/.temp/

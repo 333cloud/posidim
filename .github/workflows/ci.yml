@@ -29,6 +29,9 @@ jobs:
       - name: Expo SDK dependency check
         run: npx expo install --check
 
+      - name: Expo project health check
+        run: npx --yes expo-doctor
+
       - name: TypeScript check
         run: npm run typecheck
 

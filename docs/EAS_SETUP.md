@@ -4,9 +4,9 @@ The repository contains preview and production profiles in eas.json. The Expo ac
 
 ## One-time project linking
 
-1. Install or use the current EAS CLI and sign in with the Expo account that will own ПОСИДИМ.
-2. Run `eas project:init` from the project root and select/create the ПОСИДИМ project.
-3. Copy the generated EAS project UUID into app.json under expo.extra.eas.projectId. Do not use the local Expo device UUID.
+1. Install the EAS CLI (`npm install --global eas-cli`) and sign in with the Expo account that will own ПОСИДИМ (`eas login`).
+2. Run `eas init` from the project root and select/create the ПОСИДИМ project. This links the app and normally writes expo.extra.eas.projectId and expo.owner into app.json.
+3. Confirm app.json contains the generated EAS project UUID. Do not use the local Expo device UUID.
 4. Confirm the slug, owner, iOS bundle identifier and Android package name in the Expo dashboard.
 5. Add the production website's /auth/confirm and /auth/callback URLs, plus posidim://auth/confirm and posidim://auth/callback, to Supabase Auth's allowed redirect URLs.
 6. Configure the iOS push credentials and Android FCM credentials in EAS, then build and test on physical devices.

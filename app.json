@@ -14,7 +14,13 @@
           "locationWhenInUsePermission": "Разрешить ПОСИДИМ использовать геопозицию, чтобы находить людей рядом. Точное местоположение другим пользователям не показывается."
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Разрешить ПОСИДИМ выбирать фотографии для аватара и профиля."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

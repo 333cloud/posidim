@@ -1,6 +1,6 @@
 import React, { createElement, useEffect, useMemo, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { PanResponder, Platform } from "react-native";
+import { Linking, PanResponder, Platform } from "react-native";
 import { WebView } from "react-native-webview";
 import { supabase } from "../lib/supabase";
 import * as ImagePicker from "expo-image-picker";
@@ -51,6 +51,10 @@ export default function HomeScreen() {
  const [authBusy,setAuthBusy] = useState(false);
  const [resetBusy,setResetBusy] = useState(false);
  const [authMessage,setAuthMessage] = useState("");
+ const [authChannel,setAuthChannel] = useState<"email"|"phone">("email");
+ const [phone,setPhone] = useState("");
+ const [phoneOtp,setPhoneOtp] = useState("");
+ const [phoneOtpSent,setPhoneOtpSent] = useState(false);
  const [avatarUrl,setAvatarUrl] = useState<string|null>(null);
  const [avatarBusy,setAvatarBusy] = useState(false);
  const [profilePhotos,setProfilePhotos] = useState<any[]>([]);
@@ -399,6 +403,45 @@ export default function HomeScreen() {
   } catch(error:any) {setAuthMessage(error?.message||"Не удалось выполнить вход. Попробуй ещё раз.");}
   finally {setAuthBusy(false);}
  };
+ const startPhoneAuth=async()=>{
+  setAuthMessage("");
+  const number=phone.trim().replace(/[\\s()-]/g,"");
+  if(!/^\\+[1-9]\\d{7,14}$/.test(number)){setAuthMessage("Укажи номер в международном формате, например +37255555555.");return;}
+  if(authMode==="signup"){
+   const numericAge=Number(authAge);
+   if(!authName.trim()||!authCity.trim()){setAuthMessage("Для регистрации укажи имя и город.");return;}
+   if(!Number.isInteger(numericAge)||numericAge<18||numericAge>120){setAuthMessage("Регистрация доступна только с 18 лет.");return;}
+  }
+  setAuthBusy(true);
+  try{
+   const options:any={shouldCreateUser:authMode==="signup"};
+   if(authMode==="signup")options.data={display_name:authName.trim(),age:Number(authAge),city:authCity.trim()};
+   const {error}=await supabase.auth.signInWithOtp({phone:number,options});
+   if(error)throw error;
+   setPhone(number);setPhoneOtpSent(true);setAuthMessage("Код отправлен по SMS. Введи его ниже.");
+  }catch(error:any){setAuthMessage(error?.message||"Не удалось отправить SMS. Проверь номер и настройки SMS-провайдера.");}
+  finally{setAuthBusy(false);}
+ };
+ const verifyPhoneAuth=async()=>{
+  setAuthMessage("");
+  const number=phone.trim().replace(/[\\s()-]/g,"");
+  const token=phoneOtp.trim();
+  if(!/^\\d{6}$/.test(token)){setAuthMessage("Введи шестизначный код из SMS.");return;}
+  setAuthBusy(true);
+  try{const {error}=await supabase.auth.verifyOtp({phone:number,token,type:"sms"});if(error)throw error;}
+  catch(error:any){setAuthMessage(error?.message||"Код неверный или устарел. Запроси новый SMS.");}
+  finally{setAuthBusy(false);}
+ };
+ const signInSocial=async(provider:"custom:telegram"|"custom:vk",label:string)=>{
+  setAuthMessage("");setAuthBusy(true);
+  try{
+   const redirectTo=Platform.OS==="web"?(typeof window!=="undefined"?new URL("/auth/social",window.location.origin).toString():undefined):"posidim://auth/social";
+   const {data,error}=await supabase.auth.signInWithOAuth({provider:provider as any,options:{redirectTo,skipBrowserRedirect:Platform.OS!=="web"}});
+   if(error)throw error;
+   if(Platform.OS!=="web"&&data?.url)await Linking.openURL(data.url);
+  }catch(error:any){setAuthMessage(error?.message||("Не удалось войти через "+label+". Проверь настройки провайдера в Supabase."));}
+  finally{setAuthBusy(false);}
+ };
  const visible = useMemo(()=>events.filter(e=>(filter==="Все"||e.category===filter)&&[e.title,e.place,e.description].some(v=>v.toLowerCase().includes(search.trim().toLowerCase()))),[events,filter,search]);
  const profileCompletionItems=[Boolean(name.trim()),Number.isInteger(Number(age))&&Number(age)>=18&&Number(age)<=120,Boolean(profileCity.trim()),Boolean(bio.trim()),Boolean(avatarUrl),profilePhotos.length>0];
  const profileCompletion=Math.round(profileCompletionItems.filter(Boolean).length/profileCompletionItems.length*100);
@@ -546,12 +589,28 @@ export default function HomeScreen() {
  if(authLoading) return <SafeAreaView style={s.safe}><StatusBar barStyle="light-content"/><View style={s.authWrap}><Text style={s.logo}>ПОСИДИМ<Text style={{color:"#A78BFA"}}>.</Text></Text><Text style={s.muted}>Проверяем вход...</Text></View></SafeAreaView>;
  if(!session) return <SafeAreaView style={s.safe}><StatusBar barStyle="light-content"/><ScrollView contentContainerStyle={s.authWrap} keyboardShouldPersistTaps="handled"><Text style={s.logo}>ПОСИДИМ<Text style={{color:"#A78BFA"}}>.</Text></Text><Text style={s.heroTitle}>{authMode==="signup"?"Знакомства начинаются здесь":"С возвращением!"}</Text><Text style={[s.muted,{marginBottom:18}]}>{authMode==="signup"?"Создай аккаунт, чтобы находить людей и встречи рядом.":"Войди, чтобы продолжить общение и находить встречи."}</Text>
  {authMode==="signup"&&<><Text style={s.label}>Имя</Text><TextInput value={authName} onChangeText={setAuthName} style={s.input} placeholder="Как тебя зовут?" placeholderTextColor="#777D8C"/><Text style={s.label}>Возраст (18+)</Text><TextInput value={authAge} onChangeText={setAuthAge} keyboardType="number-pad" style={s.input} placeholder="Возраст" placeholderTextColor="#777D8C"/><Text style={s.label}>Город</Text><TextInput value={authCity} onChangeText={setAuthCity} style={s.input} placeholder="Твой город" placeholderTextColor="#777D8C"/></>}
- <Text style={s.label}>Электронная почта</Text><TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" style={s.input} placeholder="name@example.com" placeholderTextColor="#777D8C"/><Text style={s.label}>Пароль</Text><TextInput value={password} onChangeText={setPassword} secureTextEntry style={s.input} placeholder="Минимум 6 символов" placeholderTextColor="#777D8C"/>
+ <View style={{flexDirection:"row",gap:9,marginTop:8}}>
+  <TouchableOpacity onPress={()=>{setAuthChannel("email");setPhoneOtpSent(false);setAuthMessage("");}} style={[s.chip,{flex:1,alignItems:"center",backgroundColor:authChannel==="email"?"#A78BFA":"#20232D"}]}><Text style={{color:authChannel==="email"?"#191426":"#D2C7FF",fontWeight:"800"}}>Email</Text></TouchableOpacity>
+  <TouchableOpacity onPress={()=>{setAuthChannel("phone");setAuthMessage("");}} style={[s.chip,{flex:1,alignItems:"center",backgroundColor:authChannel==="phone"?"#A78BFA":"#20232D"}]}><Text style={{color:authChannel==="phone"?"#191426":"#D2C7FF",fontWeight:"800"}}>Телефон</Text></TouchableOpacity>
+ </View>
+ {authChannel==="email"?<>
+  <Text style={s.label}>Электронная почта</Text><TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" style={s.input} placeholder="name@example.com" placeholderTextColor="#777D8C"/><Text style={s.label}>Пароль</Text><TextInput value={password} onChangeText={setPassword} secureTextEntry style={s.input} placeholder="Минимум 6 символов" placeholderTextColor="#777D8C"/>
+  <TouchableOpacity disabled={authBusy} onPress={handleAuth} style={[s.button,{marginTop:20,opacity:authBusy?0.6:1}]}><Text style={s.buttonText}>{authBusy?"Подожди...":authMode==="signup"?"Создать аккаунт":"Войти"}</Text></TouchableOpacity>
+  {authMode==="login"&&<TouchableOpacity disabled={resetBusy||authBusy} onPress={()=>void resetPasswordEmail()} style={{padding:12,alignItems:"center",opacity:resetBusy?0.6:1}}><Text style={s.purple}>{resetBusy?"Отправляем письмо...":"Забыли пароль?"}</Text></TouchableOpacity>}
+ </>:<>
+  <Text style={s.label}>Номер телефона</Text><TextInput value={phone} onChangeText={value=>{setPhone(value);setPhoneOtpSent(false);}} autoCapitalize="none" keyboardType="phone-pad" style={s.input} placeholder="+37255555555" placeholderTextColor="#777D8C" editable={!phoneOtpSent}/>
+  {phoneOtpSent&&<><Text style={s.label}>Код из SMS</Text><TextInput value={phoneOtp} onChangeText={setPhoneOtp} keyboardType="number-pad" maxLength={6} style={s.input} placeholder="123456" placeholderTextColor="#777D8C"/></>}
+  <TouchableOpacity disabled={authBusy} onPress={()=>void(phoneOtpSent?verifyPhoneAuth():startPhoneAuth())} style={[s.button,{marginTop:20,opacity:authBusy?0.6:1}]}><Text style={s.buttonText}>{authBusy?"Подожди...":phoneOtpSent?"Подтвердить код":"Получить SMS-код"}</Text></TouchableOpacity>
+  {phoneOtpSent&&<TouchableOpacity disabled={authBusy} onPress={()=>{setPhoneOtpSent(false);setPhoneOtp("");setAuthMessage("");}} style={{padding:10,alignItems:"center"}}><Text style={s.purple}>Изменить номер</Text></TouchableOpacity>}
+ </>}
  {authMessage!==""&&<Text style={s.authMessage}>{authMessage}</Text>}
- <TouchableOpacity disabled={authBusy} onPress={handleAuth} style={[s.button,{marginTop:20,opacity:authBusy?0.6:1}]}><Text style={s.buttonText}>{authBusy?"Подожди...":authMode==="signup"?"Создать аккаунт":"Войти"}</Text></TouchableOpacity>
- {authMode==="login"&&<TouchableOpacity disabled={resetBusy||authBusy} onPress={()=>void resetPasswordEmail()} style={{padding:12,alignItems:"center",opacity:resetBusy?0.6:1}}><Text style={s.purple}>{resetBusy?"Отправляем письмо...":"Забыли пароль?"}</Text></TouchableOpacity>}
- <TouchableOpacity onPress={()=>{setAuthMode(authMode==="signup"?"login":"signup");setAuthMessage("");}} style={{padding:16,alignItems:"center"}}><Text style={s.purple}>{authMode==="signup"?"Уже есть аккаунт? Войти":"Нет аккаунта? Зарегистрироваться"}</Text></TouchableOpacity>
- <Text style={s.note}>Продолжая, ты подтверждаешь, что тебе исполнилось 18 лет. Сейчас доступен вход по почте; VK и Telegram подключим отдельно.</Text>
+ <View style={{marginTop:20,borderTopWidth:1,borderTopColor:"#292E39",paddingTop:16}}>
+  <Text style={[s.muted,{textAlign:"center",marginBottom:4}]}>Или продолжи через</Text>
+  <TouchableOpacity disabled={authBusy} onPress={()=>void signInSocial("custom:vk","VK ID")} style={[s.button,s.secondary,{marginTop:10,opacity:authBusy?0.6:1}]}><Text style={s.secondaryText}>Войти через VK ID</Text></TouchableOpacity>
+  <TouchableOpacity disabled={authBusy} onPress={()=>void signInSocial("custom:telegram","Telegram")} style={[s.button,s.secondary,{marginTop:9,opacity:authBusy?0.6:1}]}><Text style={s.secondaryText}>Войти через Telegram</Text></TouchableOpacity>
+ </View>
+ <TouchableOpacity onPress={()=>{setAuthMode(authMode==="signup"?"login":"signup");setPhoneOtpSent(false);setPhoneOtp("");setAuthMessage("");}} style={{padding:16,alignItems:"center"}}><Text style={s.purple}>{authMode==="signup"?"Уже есть аккаунт? Войти":"Нет аккаунта? Зарегистрироваться"}</Text></TouchableOpacity>
+ <Text style={s.note}>Продолжая, ты подтверждаешь, что тебе исполнилось 18 лет. Для SMS и входа через соцсети требуются включённые провайдеры и проверенные настройки безопасности.</Text>
  </ScrollView></SafeAreaView>;
  const Header=()=> <View style={s.top}><View><Text style={s.logo}>ПОСИДИМ<Text style={{color:"#A78BFA"}}>.</Text></Text><Text style={s.muted}>Люди рядом. Встречи по душе.</Text></View><View style={s.avatar}>{avatarUrl?<Image source={{uri:avatarUrl}} style={s.avatarImage}/>:<Text style={s.purple}>{name.slice(0,1).toUpperCase()||"Я"}</Text>}</View></View>;
  const Button=({label,onPress,secondary=false,disabled=false}:{label:string;onPress:()=>void;secondary?:boolean;disabled?:boolean})=><TouchableOpacity disabled={disabled} onPress={onPress} style={[s.button,secondary&&s.secondary,disabled&&{opacity:0.48}]}><Text style={[s.buttonText,secondary&&s.secondaryText]}>{label}</Text></TouchableOpacity>;

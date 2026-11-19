@@ -144,3 +144,12 @@ with check (
       )
   )
 );
+
+
+-- Keep message preferences accessible only through owner-scoped RPCs.
+drop policy if exists "user_message_preferences_no_direct_access" on public.user_message_preferences;
+create policy "user_message_preferences_no_direct_access"
+on public.user_message_preferences
+for all to anon, authenticated
+using (false)
+with check (false);

@@ -1,22 +1,21 @@
 // Supabase Edge Function: send-notification
-// Authenticated client may notify only users connected through a verified app action.
+// Only authenticated users may notify recipients through verified app actions.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
   const url = Deno.env.get("SUPABASE_URL");
   const secretKeys = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}");
-  // Prefer the legacy JWT service-role key for supabase-js v2 compatibility.
-  // New sb_secret_* keys are not JWTs and must not be sent as Bearer tokens.
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? secretKeys.default ?? Deno.env.get("POSIDIM_SERVICE_ROLE_KEY");
   const publishableKeys = JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "{}");
   const publishableKey = Deno.env.get("SUPABASE_ANON_KEY") ?? publishableKeys.default ?? "";
   const authHeader = req.headers.get("Authorization");
   if (!url || !serviceKey) return Response.json({ error: "Server is not configured" }, { status: 500 });
   if (!authHeader) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  const admin = createClient(url, serviceKey, { auth: { persistSession: false } });
+
+  const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const callerClient = createClient(url, publishableKey, {
-    global: { headers: { Authorization: authHeader } }, auth: { persistSession: false }
+    global: { headers: { Authorization: authHeader } }, auth: { persistSession: false, autoRefreshToken: false }
   });
   const { data: { user }, error: authError } = await callerClient.auth.getUser();
   if (authError || !user) return Response.json({ error: "Unauthorized" }, { status: 401 });
@@ -25,30 +24,66 @@ Deno.serve(async (req: Request) => {
     const body = await req.json();
     const recipientId = String(body.recipientId ?? "");
     const kind = String(body.kind ?? "");
-    const title = String(body.title ?? "ПОСИДИМ").slice(0, 80);
-    const message = String(body.body ?? "").slice(0, 180);
     const refId = String(body.refId ?? "");
-    if (!recipientId || recipientId === user.id || !message || !["direct_message","group_message","like","invitation"].includes(kind)) {
+    const messageId = String(body.messageId ?? "");
+    if (!recipientId || recipientId === user.id || !["direct_message","group_message","like","invitation","event_cancelled"].includes(kind)) {
       return Response.json({ error: "Invalid notification" }, { status: 400 });
+    }
+    if (["direct_message","group_message"].includes(kind) && (!refId || !messageId)) {
+      return Response.json({ error: "Message notification requires a verified message" }, { status: 400 });
+    }
+    if (["invitation","event_cancelled"].includes(kind) && !refId) {
+      return Response.json({ error: "Notification reference is required" }, { status: 400 });
     }
 
     let allowed = false;
+    let title = "ПОСИДИМ";
+    let message = "";
     if (kind === "direct_message") {
-      const { data } = await admin.from("direct_conversations").select("id,user_one,user_two").eq("id", refId).maybeSingle();
-      allowed = !!data && [data.user_one,data.user_two].includes(user.id) && [data.user_one,data.user_two].includes(recipientId);
+      const low = [user.id,recipientId].sort()[0];
+      const high = [user.id,recipientId].sort()[1];
+      const [{ data: conversation }, { data: sent }, { data: match }, { data: blockA }, { data: blockB }] = await Promise.all([
+        admin.from("direct_conversations").select("id,user_one,user_two").eq("id",refId).maybeSingle(),
+        admin.from("direct_messages").select("id,body,created_at").eq("id",messageId).eq("conversation_id",refId).eq("sender_id",user.id).maybeSingle(),
+        admin.from("profile_matches").select("user_low,user_high").eq("user_low",low).eq("user_high",high).maybeSingle(),
+        admin.from("user_blocks").select("blocker_id").eq("blocker_id",user.id).eq("blocked_id",recipientId).maybeSingle(),
+        admin.from("user_blocks").select("blocker_id").eq("blocker_id",recipientId).eq("blocked_id",user.id).maybeSingle()
+      ]);
+      const isPair = !!conversation && [conversation.user_one,conversation.user_two].includes(user.id) && [conversation.user_one,conversation.user_two].includes(recipientId);
+      const fresh = !!sent && Date.now() - new Date(sent.created_at).getTime() < 120000;
+      allowed = isPair && fresh && !!match && !blockA && !blockB;
+      if (allowed) { title = "Новое сообщение"; message = sent.body.slice(0,180); }
     } else if (kind === "like") {
-      const { data } = await admin.from("profile_reactions").select("actor_id,target_id,liked").eq("actor_id",user.id).eq("target_id",recipientId).eq("liked",true).maybeSingle();
-      allowed = !!data;
+      const [{ data: reaction }, { data: blockA }, { data: blockB }] = await Promise.all([
+        admin.from("profile_reactions").select("actor_id,target_id,liked").eq("actor_id",user.id).eq("target_id",recipientId).eq("liked",true).maybeSingle(),
+        admin.from("user_blocks").select("blocker_id").eq("blocker_id",user.id).eq("blocked_id",recipientId).maybeSingle(),
+        admin.from("user_blocks").select("blocker_id").eq("blocker_id",recipientId).eq("blocked_id",user.id).maybeSingle()
+      ]);
+      allowed = !!reaction && !blockA && !blockB;
+      if (allowed) { title = "Новая симпатия"; message = "Кому-то понравился твой профиль."; }
     } else if (kind === "invitation") {
-      const { data } = await admin.from("event_invitations").select("id,inviter_id,invitee_id").eq("id",refId).eq("inviter_id",user.id).eq("invitee_id",recipientId).maybeSingle();
-      allowed = !!data;
+      const { data: invite } = await admin.from("event_invitations").select("id,inviter_id,invitee_id,event_id,status")
+        .eq("id",refId).eq("inviter_id",user.id).eq("invitee_id",recipientId).eq("status","pending").maybeSingle();
+      const { data: event } = invite ? await admin.from("events").select("id,title,status").eq("id",invite.event_id).eq("status","open").maybeSingle() : { data: null };
+      allowed = !!invite && !!event;
+      if (allowed) { title = "Приглашение на встречу"; message = `Тебя пригласили: ${String(event.title || "встреча").slice(0,120)}`; }
     } else if (kind === "group_message") {
-      const [{ data: event }, { data: senderMember }, { data: recipientMember }] = await Promise.all([
-        admin.from("events").select("id,host_id").eq("id",refId).maybeSingle(),
+      const [{ data: sent }, { data: event }, { data: senderMember }, { data: recipientMember }] = await Promise.all([
+        admin.from("messages").select("id,body,created_at").eq("id",messageId).eq("event_id",refId).eq("sender_id",user.id).maybeSingle(),
+        admin.from("events").select("id,host_id,status").eq("id",refId).eq("status","open").maybeSingle(),
         admin.from("event_members").select("event_id").eq("event_id",refId).eq("user_id",user.id).eq("status","accepted").maybeSingle(),
         admin.from("event_members").select("event_id").eq("event_id",refId).eq("user_id",recipientId).eq("status","accepted").maybeSingle()
       ]);
-      allowed = !!event && (event.host_id === user.id || !!senderMember) && (event.host_id === recipientId || !!recipientMember);
+      const fresh = !!sent && Date.now() - new Date(sent.created_at).getTime() < 120000;
+      allowed = !!event && fresh && (event.host_id === user.id || !!senderMember) && (event.host_id === recipientId || !!recipientMember);
+      if (allowed) { title = "Новое сообщение во встрече"; message = sent.body.slice(0,180); }
+    } else if (kind === "event_cancelled") {
+      const [{ data: event }, { data: recipientMember }] = await Promise.all([
+        admin.from("events").select("id,host_id,status").eq("id",refId).eq("status","cancelled").maybeSingle(),
+        admin.from("event_members").select("event_id").eq("event_id",refId).eq("user_id",recipientId).eq("status","accepted").maybeSingle()
+      ]);
+      allowed = !!event && event.host_id === user.id && !!recipientMember;
+      if (allowed) { title = "Встреча отменена"; message = "Организатор отменил встречу. Открой чат, чтобы увидеть подробности."; }
     }
     if (!allowed) return Response.json({ error: "Notification relationship not verified" }, { status: 403 });
 

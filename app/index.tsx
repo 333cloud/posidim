@@ -150,7 +150,7 @@ export default function HomeScreen() {
    const kind=response?.notification?.request?.content?.data?.kind;
    if(kind==="like")setTab("Симпатии");
    else if(kind==="invitation")setTab("Встречи");
-   else if(kind==="direct_message"||kind==="group_message")setTab("Чаты");
+   else if(kind==="direct_message"||kind==="group_message"||kind==="event_cancelled")setTab("Чаты");
   };
   void Notifications.getLastNotificationResponseAsync().then(response=>{
    if(response){

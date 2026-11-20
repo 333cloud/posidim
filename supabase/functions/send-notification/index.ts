@@ -50,7 +50,8 @@ Deno.serve(async (req: Request) => {
         admin.from("user_blocks").select("blocker_id").eq("blocker_id",recipientId).eq("blocked_id",user.id).maybeSingle()
       ]);
       const isPair = !!conversation && [conversation.user_one,conversation.user_two].includes(user.id) && [conversation.user_one,conversation.user_two].includes(recipientId);
-      const fresh = !!sent && Date.now() - new Date(sent.created_at).getTime() < 120000;
+      const ageMs = sent ? Date.now() - new Date(sent.created_at).getTime() : -1;
+      const fresh = ageMs >= 0 && ageMs < 120000;
       allowed = isPair && fresh && !!match && !blockA && !blockB;
       if (allowed) { title = "Новое сообщение"; message = sent.body.slice(0,180); }
     } else if (kind === "like") {
@@ -74,7 +75,8 @@ Deno.serve(async (req: Request) => {
         admin.from("event_members").select("event_id").eq("event_id",refId).eq("user_id",user.id).eq("status","accepted").maybeSingle(),
         admin.from("event_members").select("event_id").eq("event_id",refId).eq("user_id",recipientId).eq("status","accepted").maybeSingle()
       ]);
-      const fresh = !!sent && Date.now() - new Date(sent.created_at).getTime() < 120000;
+      const ageMs = sent ? Date.now() - new Date(sent.created_at).getTime() : -1;
+      const fresh = ageMs >= 0 && ageMs < 120000;
       allowed = !!event && fresh && (event.host_id === user.id || !!senderMember) && (event.host_id === recipientId || !!recipientMember);
       if (allowed) { title = "Новое сообщение во встрече"; message = sent.body.slice(0,180); }
     } else if (kind === "event_cancelled") {

@@ -2,16 +2,24 @@
 // Only authenticated users may notify recipients through verified app actions.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const jsonResponse = (body: unknown, status = 200) => Response.json(body, { status, headers: corsHeaders });
+
 Deno.serve(async (req: Request) => {
-  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: corsHeaders });
   const url = Deno.env.get("SUPABASE_URL");
   const secretKeys = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}");
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? secretKeys.default ?? Deno.env.get("POSIDIM_SERVICE_ROLE_KEY");
   const publishableKeys = JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "{}");
   const publishableKey = Deno.env.get("SUPABASE_ANON_KEY") ?? publishableKeys.default ?? "";
   const authHeader = req.headers.get("Authorization");
-  if (!url || !serviceKey) return Response.json({ error: "Server is not configured" }, { status: 500 });
-  if (!authHeader) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (!url || !serviceKey) return jsonResponse({ error: "Server is not configured" }, 500);
+  if (!authHeader) return jsonResponse({ error: "Unauthorized" }, 401);
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const callerClient = createClient(url, publishableKey, {
@@ -27,13 +35,13 @@ Deno.serve(async (req: Request) => {
     const refId = String(body.refId ?? "");
     const messageId = String(body.messageId ?? "");
     if (!recipientId || recipientId === user.id || !["direct_message","group_message","like","invitation","event_cancelled"].includes(kind)) {
-      return Response.json({ error: "Invalid notification" }, { status: 400 });
+      return jsonResponse({ error: "Invalid notification" }, 400);
     }
     if (["direct_message","group_message"].includes(kind) && (!refId || !messageId)) {
-      return Response.json({ error: "Message notification requires a verified message" }, { status: 400 });
+      return jsonResponse({ error: "Message notification requires a verified message" }, 400);
     }
     if (["invitation","event_cancelled"].includes(kind) && !refId) {
-      return Response.json({ error: "Notification reference is required" }, { status: 400 });
+      return jsonResponse({ error: "Notification reference is required" }, 400);
     }
 
     let allowed = false;
@@ -87,11 +95,11 @@ Deno.serve(async (req: Request) => {
       allowed = !!event && event.host_id === user.id && !!recipientMember;
       if (allowed) { title = "Встреча отменена"; message = "Организатор отменил встречу. Открой чат, чтобы увидеть подробности."; }
     }
-    if (!allowed) return Response.json({ error: "Notification relationship not verified" }, { status: 403 });
+    if (!allowed) return jsonResponse({ error: "Notification relationship not verified" }, 403);
 
     const { data: tokens, error: tokenError } = await admin.from("push_tokens").select("expo_push_token").eq("user_id",recipientId);
     if (tokenError) throw tokenError;
-    if (!tokens?.length) return Response.json({ success: true, delivered: 0 });
+    if (!tokens?.length) return jsonResponse({ success: true, delivered: 0 });
     const messages = tokens.map(t => ({ to:t.expo_push_token, sound:"default", title, body:message, data:{ kind, refId } }));
     const response = await fetch("https://exp.host/--/api/v2/push/send", {
       method:"POST", headers:{ "Content-Type":"application/json", "Accept":"application/json" },
@@ -99,9 +107,9 @@ Deno.serve(async (req: Request) => {
     });
     if (!response.ok) throw new Error("Expo Push service returned " + response.status);
     const result = await response.json();
-    return Response.json({ success:true, delivered:messages.length, result });
+    return jsonResponse({ success:true, delivered:messages.length, result });
   } catch (error) {
     console.error("send-notification failed", error);
-    return Response.json({ error:"Notification delivery failed" }, { status:500 });
+    return jsonResponse({ error:"Notification delivery failed" }, 500);
   }
 });

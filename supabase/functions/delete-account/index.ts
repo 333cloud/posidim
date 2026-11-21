@@ -3,8 +3,16 @@
 // Invoke with the user's Authorization: Bearer access-token header.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+const jsonResponse = (body: unknown, status = 200) => Response.json(body, { status, headers: corsHeaders });
+
 Deno.serve(async (req: Request) => {
-  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: corsHeaders });
   const url = Deno.env.get("SUPABASE_URL");
   const secretKeys = JSON.parse(Deno.env.get("SUPABASE_SECRET_KEYS") ?? "{}");
   // Prefer the legacy JWT service-role key for supabase-js v2 compatibility.
@@ -13,7 +21,7 @@ Deno.serve(async (req: Request) => {
   const publishableKeys = JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "{}");
   const publishableKey = Deno.env.get("SUPABASE_ANON_KEY") ?? publishableKeys.default ?? "";
   const authHeader = req.headers.get("Authorization");
-  if (!url || !serviceKey || !authHeader) return Response.json({ error: "Server is not configured" }, { status: 500 });
+  if (!url || !serviceKey || !authHeader) return jsonResponse({ error: "Server is not configured" }, 500);
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const userClient = createClient(url, publishableKey, {
@@ -21,7 +29,7 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false }
   });
   const { data: { user }, error: userError } = await userClient.auth.getUser();
-  if (userError || !user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (userError || !user) return jsonResponse({ error: "Unauthorized" }, 401);
 
   try {
     // Remove private gallery files owned by the account before deleting auth user.
@@ -43,9 +51,9 @@ Deno.serve(async (req: Request) => {
     // Auth FK cascades remove the profile and dependent rows. Abort rather than report success on failure.
     const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
     if (deleteError) throw deleteError;
-    return Response.json({ success: true });
+    return jsonResponse({ success: true });
   } catch (error) {
     console.error("delete-account failed", error);
-    return Response.json({ error: "Account deletion failed. Contact support before retrying." }, { status: 500 });
+    return jsonResponse({ error: "Account deletion failed. Contact support before retrying." }, 500);
   }
 });

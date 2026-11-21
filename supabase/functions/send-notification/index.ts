@@ -26,7 +26,7 @@ Deno.serve(async (req: Request) => {
     global: { headers: { Authorization: authHeader } }, auth: { persistSession: false, autoRefreshToken: false }
   });
   const { data: { user }, error: authError } = await callerClient.auth.getUser();
-  if (authError || !user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  if (authError || !user) return jsonResponse({ error: "Unauthorized" }, 401);
 
   try {
     const body = await req.json();

@@ -88,9 +88,19 @@
 
 - Не подтверждены фактические Redirect URLs в Supabase Auth; нужно проверить ссылки подтверждения почты и восстановления пароля на опубликованном Web URL и на телефонах.
 - В Supabase Advisor отмечено, что защита от скомпрометированных паролей (Leaked Password Protection) выключена.
-- В app.json пока нет EAS project ID; push на Android/iOS не будет считаться готовым до привязки Expo/EAS-проекта и проверки реальных токенов.
+- EAS-проект привязан и подтверждён: owner `marrksss131s-team`, project ID `649dc7e2-142d-4860-b56b-9172c19cfcb9` (также указан в `app.json`). Push всё ещё не готов до проверки реальных токенов устройств и доставки уведомлений.
 - Не проведён сценарный тест под двумя независимыми аккаунтами и на физических iOS/Android устройствах.
 - Единственный текущий Auth-аккаунт назначен модератором guarded bootstrap-миграцией (она срабатывает только при ровно одном пользователе и пустой таблице ролей). Для полноценного теста двух независимых пользователей всё ещё нужен второй аккаунт.
 - Не заполнены юридические сведения оператора, политика конфиденциальности, условия использования и правила сообщества; их нельзя достоверно придумать вместо владельца.
 - Возраст 18+ сейчас подтверждается самодекларацией в форме, без проверки документа или даты рождения; если выбранная юрисдикция требует строгую age assurance, до запуска нужен соответствующий процесс/провайдер.
 - Не подтверждены резервное копирование, мониторинг, лимиты расходов и регламент работы модерации.
+
+## 9. Автоматически проверено 21.11.2026
+
+- EAS owner/project ID подтверждены чтением локального `app.json` и успешным запросом списка сборок по проекту. В GitHub `main` привязка добавлена коммитом [e363f76](https://github.com/333cloud/posidim/commit/e363f76b1935b257e7d7aaf53e76250e5b87556c).
+- Android internal preview APK завершён 20.11.2026 (SDK 57, build ID `90c85449-1e2f-458d-976e-0ca95f3c60ee`); артефакт истекает 04.12.2026. [APK](https://expo.dev/artifacts/eas/fbQubfub4i4yCH8CmNx4JxMXjuR_0f7SkaXaCe9hoow.apk). SHA коммита в метаданных сборки отсутствует; сборка предшествует четырём последним push-фиксам, поэтому актуальный main ещё не подтверждён этой APK.
+- iOS simulator build завершён 20.11.2026 (SDK 57, ID `f3c5c99b-0536-4990-b843-ffadcc23b056`); это simulator archive, не IPA для реального устройства/App Store.
+- GitHub Actions run #227 для commit `e363f76` завершился success: npm install/audit, Expo dependency check/Doctor, TypeScript и Web/Android/iOS export. [CI](https://github.com/333cloud/posidim/actions/runs/44886116607).
+- На Windows `DESKTOP-2IDEH2B` подтверждены Node `v26.13.1`, npm `11.20.0`, `npm run typecheck` (exit 0), `npm audit --audit-level=high` (0 vulnerabilities) и локальные Expo exports Web, Android, iOS (exit 0; результаты в `%LOCALAPPDATA%\Temp\posidim-*-export`).
+- `npm run lint` на локальной Windows-папке завершился ошибкой: 54 errors / 49 warnings. В корне присутствуют диагностические скрипты, логи и backup-файлы, которых нет в GitHub main; targeted lint app/lib/scripts также завершился с 43 errors (включая React Compiler/ref правила и Node `__dirname`). CI lint не запускает. Чистый source-only lint не подтверждён; не считать lint зелёным.
+- Git отсутствует в PATH на Windows-компьютере; локальный working-tree status не подтверждён. Новые EAS cloud builds в этой проверке не запускались.

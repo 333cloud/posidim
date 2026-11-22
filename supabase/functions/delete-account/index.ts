@@ -21,7 +21,8 @@ Deno.serve(async (req: Request) => {
   const publishableKeys = JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "{}");
   const publishableKey = Deno.env.get("SUPABASE_ANON_KEY") ?? publishableKeys.default ?? "";
   const authHeader = req.headers.get("Authorization");
-  if (!url || !serviceKey || !authHeader) return jsonResponse({ error: "Server is not configured" }, 500);
+  if (!url || !serviceKey) return jsonResponse({ error: "Server is not configured" }, 500);
+  if (!authHeader) return jsonResponse({ error: "Unauthorized" }, 401);
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const userClient = createClient(url, publishableKey, {

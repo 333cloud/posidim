@@ -66,7 +66,7 @@ begin
     from public.event_members
     where event_id = v_event.id and status = 'accepted';
 
-    if v_count + 1 >= v_event.capacity then
+    if v_count + 1 > v_event.capacity then
       raise exception 'В этой встрече уже нет свободных мест';
     end if;
 

@@ -129,3 +129,13 @@
 - Desktop Commander показал `DESKTOP-2IDEH2B` Online (последний контакт 3 минуты на момент запроса), однако remote terminal/read-file вызовы не получили ответа и завершились timeout/pending. Локальный аудит был запущен, но результаты `git status`, `npm run typecheck`, `npm run lint`, `npm audit`, Expo exports, Expo Doctor и поиск placeholders не получены. Не переиспользовать прошлые локальные результаты как сегодняшние; повторить при восстановлении командного канала.
 - Supabase live project, Advisors, deployed Edge Functions, Auth settings и Storage policies не проверены: Supabase skill отсутствовал в доступном списке. Production не изменялся.
 - Read-only повторный просмотр main подтвердил сохраняющиеся статические риски: Telegram OAuth signup требует age metadata, которой provider не предоставляет; invitation insert policy и invitation push branch не проверяют блокировки в обе стороны; upload в `profile-photos` не enforce-ит лимит объектов, а `delete-account` list удаляет только первую страницу до 1000 объектов. Не выполнялись live tests; production SQL/Storage/Functions не изменялись.
+
+
+## 11. Production security hardening verified 23.11.2026
+
+- Event invitation inserts are denied when either participant blocks the other; the same block check is enforced in push delivery.
+- Profiles cannot become discoverable unless age is between 18 and 120; missing age stays hidden.
+- Storage object-level limit for `profile-photos` is enforced at insert, serialized per user, max 5 files. Production audit found no users above the limit.
+- Push sends verify recent messages/reactions/invitations and block checks; budget is 60 requests per user per minute, service-role only.
+- Account deletion recursively paginates account-owned files in both buckets before deleting the Auth user.
+- SQL age gate and push-budget counter tests passed in rolled-back transactions; policy/function read-back verified. Physical-device push, local build/typecheck, UI tests, and store submissions are still pending device/account access.

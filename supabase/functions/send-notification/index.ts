@@ -91,6 +91,7 @@ Deno.serve(async (req: Request) => {
       }
     }
     if (!allowed) return jsonResponse({ error: "Notification relationship not verified" }, 403);
+    if (!message.trim()) return jsonResponse({ success: true, accepted: 0, rejected: 0, skipped: "empty_message" });
 
     const { data: budget, error: budgetError } = await admin.rpc("consume_push_notification_budget", { p_user_id: user.id });
     if (budgetError) throw budgetError;

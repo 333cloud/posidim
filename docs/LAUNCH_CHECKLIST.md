@@ -119,3 +119,13 @@
 
 - Telegram OIDC first-time signup is blocked by the current profile trigger: `create_profile_for_new_user` requires `raw_user_meta_data.age`, while the Telegram OIDC `profile` claims documented by Telegram do not include age; app `signInSocial` sends no age metadata. This is a static code-path finding, not a live OAuth test. Do not relax the 18+ check or assign a default age; design an explicit age-confirmation/onboarding flow before enabling new Telegram registrations. [Telegram OIDC claims](https://core.telegram.org/bots/telegram-login).
 - Potential block/invitation policy gap: `event_invitations` insert RLS validates host and open event but not `user_blocks`, and the invitation push branch validates invite/event without checking blocks. UI profile visibility filters blocked profiles, but direct API invitations may bypass that filter. Review/define blocking semantics and add server-side enforcement before beta; no production policy/function changes made.
+
+
+## 11. Production security changes verified 23.11.2026
+
+- Event invitation inserts are denied when either participant blocks the other; the same block check is enforced in push delivery.
+- Profiles cannot become discoverable unless age is between 18 and 120; missing age stays hidden.
+- Storage object-level limit for `profile-photos` is enforced at insert, serialized per user, max 5 files. Current production audit found no users above the limit.
+- Push sends require a verified relationship/recent database message or matching invitation/reaction; request budget is 60 per user per minute. Push budget RPC/table are service-role only.
+- Account deletion removes all nested files in both account-owned storage buckets with pagination before deleting the auth user.
+- Tests: SQL age-gate test passed inside rolled-back transaction; push-budget counter test passed inside rolled-back transaction; policy/function privilege read-back verified. Physical-device push delivery, local source build/typecheck, and store submission remain pending device/host/account access.

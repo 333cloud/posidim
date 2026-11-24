@@ -25,6 +25,13 @@ BEFORE INSERT ON public.event_invitations
 FOR EACH ROW
 EXECUTE FUNCTION public.reject_blocked_event_invitation();
 
+DROP TRIGGER IF EXISTS reject_blocked_event_invitation_acceptance ON public.event_invitations;
+CREATE TRIGGER reject_blocked_event_invitation_acceptance
+BEFORE UPDATE OF status ON public.event_invitations
+FOR EACH ROW
+WHEN (OLD.status = 'pending' AND NEW.status = 'accepted')
+EXECUTE FUNCTION public.reject_blocked_event_invitation();
+
 DROP POLICY IF EXISTS event_invites_create_host ON public.event_invitations;
 CREATE POLICY event_invites_create_host
 ON public.event_invitations
@@ -38,4 +45,6 @@ WITH CHECK (
       AND e.host_id = (SELECT auth.uid())
       AND e.status = 'open'
   )
+  AND event_invitations.status = 'pending'
+  AND event_invitations.responded_at IS NULL
 );

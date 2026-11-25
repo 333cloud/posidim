@@ -7,11 +7,10 @@ const corsHeaders = {
 };
 const jsonResponse = (body: unknown, status = 200) => Response.json(body, { status, headers: corsHeaders });
 
-async function deleteFolderContents(admin: any, bucket: string, folder: string, depth = 0): Promise<void> {
+async function deleteFolderContents(admin: any, bucket: string, folder: string, depth = 0, totalEntries = { count: 0 }): Promise<void> {
   if (depth > 12) throw new Error("Storage folder nesting limit reached");
   const limit = 100;
   let offset = 0;
-  let total = 0;
   const filePaths: string[] = [];
   const subfolders: string[] = [];
   while (true) {
@@ -19,8 +18,8 @@ async function deleteFolderContents(admin: any, bucket: string, folder: string, 
     if (error) throw error;
     const entries = data ?? [];
     if (!entries.length) break;
-    total += entries.length;
-    if (total > 10000) throw new Error("Account storage object limit exceeded; deletion stopped safely");
+    totalEntries.count += entries.length;
+    if (totalEntries.count > 10000) throw new Error("Account storage entry limit exceeded; deletion stopped safely");
     for (const entry of entries) {
       if (!entry.name) continue;
       const path = folder ? folder + "/" + entry.name : entry.name;
@@ -34,7 +33,7 @@ async function deleteFolderContents(admin: any, bucket: string, folder: string, 
     const { error } = await admin.storage.from(bucket).remove(filePaths.slice(i, i + 100));
     if (error) throw error;
   }
-  for (const subfolder of subfolders) await deleteFolderContents(admin, bucket, subfolder, depth + 1);
+  for (const subfolder of subfolders) await deleteFolderContents(admin, bucket, subfolder, depth + 1, totalEntries);
 }
 
 Deno.serve(async (req: Request) => {

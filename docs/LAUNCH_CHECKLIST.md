@@ -170,3 +170,18 @@
 - Draft security-hardening PR #2 remains open and unmerged, head `2b55bc95c931aa207c6ed558f72c7253399e31dc`, base `fc74efc5d83ccfed42ccfa13a059b23c14ce79d1`; GitHub reports `mergeable=false`/`dirty`, head commit status pending with zero statuses and zero check-runs. Do not merge or treat the PR's production-Supabase assertions as live-verified by this audit. PR contains production SQL migrations and Edge Function changes; no production changes were made.
 - Supabase live project, Advisors, deployed functions, Auth configuration, and Storage policies were not checked because the Supabase skill was not present in the available skill list; connector actions were not invoked without required instructions. No production Supabase changes were made.
 - No application source changes were made today; this section records verified statuses only.
+
+## 8. Verified automated audit — 2026-11-27
+
+- Main commit `c63f743b2fc64c8c32e9fc4b033b653cd572c1f0`: hardens event invitations, push block checks, and account Storage cleanup. GitHub CI run #247 completed successfully for this commit.
+- `supabase/event_invitations.sql` now requires pending-only inserts, null `responded_at`, host ownership of an open event, and a database trigger checking blocks in both directions for insert and pending-to-accepted updates. A separate migration `supabase/migrations/20261127104356_blocked_event_invitation_guards.sql` was added for existing databases. **Not deployed to production.**
+- `send-notification` now fails closed if block checks error and suppresses direct-message, like, invitation, group-message, and cancellation notifications when either user has blocked the other. **Not deployed to production.**
+- `delete-account` now recursively paginates Storage listings, collects both photo/avatar paths before removal, removes in batches of 100, and aborts safely at a 10,000-entry cap or on listing/removal errors before deleting the Auth user. **Not deployed to production.**
+- Local checks on the available Windows SDK 57 snapshot: `npm run typecheck` PASS; `npm run lint` PASS (9 React Hooks warnings); `npm audit --audit-level=high` reports 0 vulnerabilities; Web/Android/iOS exports PASS. Expo Doctor 20/21: only mismatch `expo ~57.0.34` expected, `57.0.33` found. The local folder is not a Git checkout and is not the GitHub main SDK 54 source.
+- Temporary local Deno type-check of the two changed Edge Functions PASS. Temporary PGlite checks PASS for invitation baseline/migration (unblocked invite, direct accepted insert rejected, reverse-block invite rejected, reverse-block acceptance rejected, pending remains). Temporary mock check PASS for recursive Storage pagination/batched removal and 10,000-entry fail-safe. These tests are not committed and are not in GitHub CI.
+- EAS recent builds are finished but have no source SHA; SDK 57 Android APKs and iOS Simulator archive are not confirmed as builds of current main. No new cloud builds were started.
+- GitHub main has no tracked `assets/` directory and `app.json` has no app icon/splash declaration. Store-ready artwork is still missing.
+- Supabase live state (Auth, RLS, deployed Edge Functions, Advisors, leaked-password protection) was not inspected in this run because the required Supabase skill/tool instructions are unavailable. No production changes were made.
+
+Outstanding items still visible in Draft Security PR #2 but not on main include push rate limiting, Storage-level photo count enforcement, and database discoverability age guard; PR #2 remains draft and dirty/unmergeable. Telegram OAuth signup age/onboarding, native device testing, safety/moderation workflow, legal review, store accounts and assets remain launch blockers.
+

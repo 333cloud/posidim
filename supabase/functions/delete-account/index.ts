@@ -10,6 +10,41 @@ const corsHeaders = {
 };
 const jsonResponse = (body: unknown, status = 200) => Response.json(body, { status, headers: corsHeaders });
 
+async function listFolderContents(admin: any, bucket: string, folder: string, depth = 0, totalEntries = { count: 0 }): Promise<string[]> {
+  if (depth > 12) throw new Error("Storage folder nesting limit reached");
+  const limit = 100;
+  let offset = 0;
+  const filePaths: string[] = [];
+  const subfolders: string[] = [];
+  while (true) {
+    const { data, error } = await admin.storage.from(bucket).list(folder, { limit, offset });
+    if (error) throw error;
+    const entries = data ?? [];
+    if (!entries.length) break;
+    totalEntries.count += entries.length;
+    if (totalEntries.count > 10000) throw new Error("Account storage entry limit exceeded; deletion stopped safely");
+    for (const entry of entries) {
+      if (!entry.name) continue;
+      const path = folder ? folder + "/" + entry.name : entry.name;
+      if (entry.id) filePaths.push(path);
+      else subfolders.push(path);
+    }
+    if (entries.length < limit) break;
+    offset += entries.length;
+  }
+  for (const subfolder of subfolders) {
+    filePaths.push(...await listFolderContents(admin, bucket, subfolder, depth + 1, totalEntries));
+  }
+  return filePaths;
+}
+
+async function removeStorageFiles(admin: any, bucket: string, paths: string[]): Promise<void> {
+  for (let i = 0; i < paths.length; i += 100) {
+    const { error } = await admin.storage.from(bucket).remove(paths.slice(i, i + 100));
+    if (error) throw error;
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: corsHeaders });
@@ -33,21 +68,13 @@ Deno.serve(async (req: Request) => {
   if (userError || !user) return jsonResponse({ error: "Unauthorized" }, 401);
 
   try {
-    // Remove private gallery files owned by the account before deleting auth user.
-    for (const bucket of ["profile-photos"]) {
-      const { data: files, error } = await admin.storage.from(bucket).list(user.id, { limit: 1000 });
-      if (error) throw error;
-      if (files?.length) {
-        const paths = files.filter(f => f.name).map(f => user.id + "/" + f.name);
-        if (paths.length) {
-          const { error: removeError } = await admin.storage.from(bucket).remove(paths);
-          if (removeError) throw removeError;
-        }
-      }
-    }
-    const avatarPaths = ["jpg","jpeg","png","webp"].map(ext => user.id + "/avatar." + ext);
-    const { error: avatarError } = await admin.storage.from("avatars").remove(avatarPaths);
-    if (avatarError) throw avatarError;
+    // Collect all owned files before removing anything, then delete in bounded batches.
+    const [profilePhotoPaths, avatarPaths] = await Promise.all([
+      listFolderContents(admin, "profile-photos", user.id),
+      listFolderContents(admin, "avatars", user.id),
+    ]);
+    await removeStorageFiles(admin, "profile-photos", profilePhotoPaths);
+    await removeStorageFiles(admin, "avatars", avatarPaths);
 
     // Auth FK cascades remove the profile and dependent rows. Abort rather than report success on failure.
     const { error: deleteError } = await admin.auth.admin.deleteUser(user.id);
